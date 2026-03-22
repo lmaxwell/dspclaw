@@ -93,10 +93,18 @@ const SessionPanel: React.FC = () => {
   const gainNodeRef = useRef<GainNode | null>(null);
   const bufferRef = useRef<AudioBuffer | null>(null);
 
-  // Stop audio if session changes
+  // Stop audio ONLY if session changes. URL change will trigger smooth reload.
   useEffect(() => {
     stopRefAudio();
+    bufferRef.current = null;
   }, [activeSessionId]);
+
+  // Handle URL change: If playing, reload and restart without toggling off
+  useEffect(() => {
+    if (isPlayingRef && activeSession?.audioInputUrl && activeSession.type === 'mono') {
+      startRefAudio();
+    }
+  }, [activeSession?.audioInputUrl]);
 
   // Reconnect audio input if dspNode changes (e.g. after compilation)
   useEffect(() => {
@@ -112,23 +120,28 @@ const SessionPanel: React.FC = () => {
 
   const stopRefAudio = () => {
     if (sourceNodeRef.current) {
-      sourceNodeRef.current.stop();
+      try {
+        sourceNodeRef.current.stop();
+        sourceNodeRef.current.disconnect();
+      } catch (e) {}
       sourceNodeRef.current = null;
+    }
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect();
+      } catch (e) {}
+      gainNodeRef.current = null;
     }
     setIsPlayingRef(false);
   };
 
-  const toggleRefAudio = async () => {
+  const startRefAudio = async () => {
     if (!activeSession?.dspNode || !isAudioRunning) return;
     const audioCtx = getAudioCtx();
-    
-    if (isPlayingRef) {
-      stopRefAudio();
-      return;
-    }
 
     setIsRefLoading(true);
     try {
+      // 1. Load the new buffer
       if (!bufferRef.current || (bufferRef.current as any).label !== activeSession.audioInputUrl) {
         const response = await fetch(activeSession.audioInputUrl);
         const arrayBuffer = await response.arrayBuffer();
@@ -136,24 +149,42 @@ const SessionPanel: React.FC = () => {
         (bufferRef.current as any).label = activeSession.audioInputUrl;
       }
       
+      // 2. Stop existing source if any
+      if (sourceNodeRef.current) {
+        try { sourceNodeRef.current.stop(); sourceNodeRef.current.disconnect(); } catch(e) {}
+      }
+
+      // 3. Create new source
       const source = audioCtx.createBufferSource();
       source.buffer = bufferRef.current;
       source.loop = true;
       
-      const gain = audioCtx.createGain();
-      gain.gain.value = activeSession.audioInputVolume;
-      gainNodeRef.current = gain;
+      // 4. Create or reuse gain node
+      if (!gainNodeRef.current) {
+        const gain = audioCtx.createGain();
+        gain.gain.value = activeSession.audioInputVolume;
+        gainNodeRef.current = gain;
+      }
       
-      source.connect(gain);
-      gain.connect(activeSession.dspNode);
+      source.connect(gainNodeRef.current);
+      gainNodeRef.current.connect(activeSession.dspNode);
       source.start(0);
       
       sourceNodeRef.current = source;
       setIsPlayingRef(true);
     } catch (e) {
       console.error("Ref Audio Error:", e);
+      setIsPlayingRef(false);
     } finally {
       setIsRefLoading(false);
+    }
+  };
+
+  const toggleRefAudio = async () => {
+    if (isPlayingRef) {
+      stopRefAudio();
+    } else {
+      await startRefAudio();
     }
   };
 

@@ -22,12 +22,15 @@ export const initializeApp = async () => {
   // Give it a tiny bit of time for WASM/Midi to settle before first compile
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // Auto-compile default
+  // Auto-compile all initial sessions
   try {
-    await client.callTool({
-      name: "compile_and_run",
-      arguments: {}
-    });
+    const sessions = useStore.getState().sessions;
+    for (const session of sessions) {
+      await client.callTool({
+        name: "compile_and_run",
+        arguments: { __sessionId: session.id }
+      });
+    }
   } catch (e) {
     console.warn("Initial compilation deferred:", e);
   }

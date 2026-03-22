@@ -25,8 +25,8 @@ DSPCLAW is a sandbox for exploring AI-assisted Faust code generation. It allows 
 
 ### Installation
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME.git
-cd faust
+git clone https://github.com/lmaxwell/dspcalw
+cd dspclaw
 npm install
 ```
 

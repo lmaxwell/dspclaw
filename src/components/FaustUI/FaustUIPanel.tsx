@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store';
 import { Knob } from './Knob';
+import { Menu } from './Menu';
 
 const FaustUIPanel: React.FC = () => {
   const { getActiveSession } = useStore();
@@ -30,11 +31,39 @@ const FaustUIPanel: React.FC = () => {
     }
   };
 
-  const parseMetadata = (label: string) => {
+  const parseMetadata = (item: any) => {
+    const label = item.label || '';
+    const meta = item.meta || [];
+    
+    // Helper to find a meta value by key
+    const findMeta = (key: string) => {
+      const entry = meta.find((m: any) => m[key] !== undefined);
+      return entry ? entry[key] : null;
+    };
+
     const unitMatch = label.match(/\[unit:(.*?)\]/);
     const styleMatch = label.match(/\[style:(.*?)\]/);
+    
+    const unit = findMeta('unit') || (unitMatch ? unitMatch[1] : '');
+    const styleStr = findMeta('style') || (styleMatch ? styleMatch[1] : '');
     const cleanLabel = label.replace(/\[.*?\]/g, '').trim();
-    return { cleanLabel, unit: unitMatch ? unitMatch[1] : '', style: styleMatch ? styleMatch[1] : '' };
+    
+    let menuOptions: { label: string; value: number }[] | null = null;
+    
+    if (styleStr && styleStr.startsWith('menu')) {
+      const optionsMatch = styleStr.match(/menu\{(.*?)\}/);
+      if (optionsMatch) {
+        menuOptions = optionsMatch[1].split(';').map(opt => {
+          const [l, v] = opt.split(':');
+          return {
+            label: l.replace(/'/g, '').trim(),
+            value: parseFloat(v)
+          };
+        });
+      }
+    }
+
+    return { cleanLabel, unit, style: styleStr, menuOptions };
   };
 
   const renderItem = (item: any): React.ReactNode => {
@@ -97,10 +126,24 @@ const FaustUIPanel: React.FC = () => {
       );
     }
 
-    const { cleanLabel, unit, style } = parseMetadata(item.label);
+    const { cleanLabel, unit, style, menuOptions } = parseMetadata(item);
     const currentValue = values[item.address] ?? item.init;
     const isCheck = item.type === 'checkbox';
     const isButton = item.type === 'button';
+    
+    // Check if it's a menu
+    if (menuOptions) {
+      return (
+        <Menu 
+          key={item.address}
+          label={cleanLabel}
+          value={currentValue}
+          options={menuOptions}
+          onChange={(val) => handleParamChange(item.address, val)}
+        />
+      );
+    }
+
     const isKnob = style === 'knob' || (item.min !== undefined && !isCheck && !isButton);
 
     if (isKnob) {
