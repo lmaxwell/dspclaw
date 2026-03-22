@@ -13,17 +13,21 @@ jobs:
     runs-on: macos-latest
     
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Force runner to use Node 24 for all actions
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     permissions:
-      contents: write # Needed to create a release
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           node-version: '24'
           cache: 'npm'
@@ -38,10 +42,13 @@ jobs:
         run: npx electron-builder --mac --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           files: |
             release/*.zip
@@ -50,8 +57,10 @@ jobs:
           generate_release_notes: true
 
       - name: Deploy to Vercel (Production)
-        uses: amondnet/vercel-action@v25 # Upgraded from v20 to v25
+        uses: amondnet/vercel-action@v25
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID}}
