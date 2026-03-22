@@ -1,84 +1,73 @@
 # DSPCLAW
 
- Faust DSP programming, featuring an embedded AI agent powered by the Model Context Protocol (MCP).
+Faust DSP programming, featuring an embedded AI agent powered by the Model Context Protocol (MCP).
 
 ![DSPCLAW Screenshot](./assets/screenshot.jpg)
+
+[**🌐 Live Web Demo**](https://dspclaw.vercel.app/) | [**📦 Download Latest Release (Mac/Win)**](https://github.com/lmaxwell/dspclaw/releases/latest)
 
 ## 🚀 What this is
 
 DSPCLAW is a sandbox for exploring AI-assisted Faust code generation. It allows you to describe audio synthesizers and effects in natural language, and an AI agent will autonomously write, compile, and render a photorealistic VST-style UI directly in your browser or on your desktop.
 
-### Key Features
+## ✨ Key Features
 
-- **Embedded AI Agent:** Uses `@modelcontextprotocol/sdk` to give LLMs direct access to read, write, and compile your DSP code.
+- **Embedded AI Agent**: Powered by Model Context Protocol (MCP), the agent can read, write, and compile Faust code based on your requirements.
+- **Industry-Level VST UI**: Photorealistic control surface with radial knobs, LED tracking rings, and hierarchical grouping.
+- **Polyphonic MIDI**: Full support for MIDI controllers and computer keyboard mappings.
+- **Live MIDI Visualization**: Real-time display of active MIDI notes and signal processing.
+- **Adaptive Interface**: VST modules and controls intelligently scale and stack to fill the workspace.
+- **Audio Input Reference**: Route external WAV loops through your DSP chains for testing effects.
 
-- **UI:** Automatically generates photorealistic control surfaces based on Faust metadata (`[style:knob]`, `[unit:Hz]`).
-- **Cross-Platform:** Runs as a native desktop app (macOS/Windows) via Electron, or directly in the browser via Web/Vercel.
+## 🛠 Tech Stack
 
+- **Frontend**: React + Vite + TypeScript
+- **Desktop**: Electron
+- **DSP Engine**: [@grame/faustwasm](https://github.com/grame-cncm/faustwasm)
+- **AI/MCP**: @modelcontextprotocol/sdk
+- **Layout**: Allotment (resizable panes)
+- **Editor**: Monaco Editor
 
-
-## ⚙️ Getting Started (Development)
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v20+ recommended)
+
+- [Node.js](https://nodejs.org/) (v20 or higher)
 - An API Key from OpenAI, Anthropic, or Moonshot (or a custom OpenAI-compatible endpoint).
 
 ### Installation
-```bash
-git clone https://github.com/lmaxwell/dspcalw
-cd dspclaw
-npm install
-```
 
-### Running the App
-You can run DSPCLAW in two modes:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/lmaxwell/dspclaw.git
+   cd dspclaw
+   ```
 
-**1. Desktop Mode (Electron - Recommended)**
-Provides the full experience, including native window controls, secure keychain storage, and CORS bypass.
-```bash
-npm run electron:dev
-```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-**2. Web Mode (Vite)**
-Runs entirely in the browser. Best for quick UI tweaks or deploying to the web.
-```bash
-npm run dev
-```
+3. Start development server:
+   - For Web: `npm run dev`
+   - For Electron: `npm run electron:dev`
 
-## 📦 Building & Packaging
+### Usage
 
-To package the application for distribution:
+1. Open the **Settings** panel (gear icon) and enter your API Key.
+2. Click **START ENGINE** in the header to activate WebAudio.
+3. Use the Chat panel to ask the AI to build or modify a DSP processor.
+4. Play notes using your MIDI controller or computer keyboard (A, W, S, E, D, F, T, G, Y, H, U, J, K).
 
-**Build for macOS & Windows (ZIPs):**
-*(Note: Requires a macOS environment to build DMG/Mac ZIPs)*
-```bash
-npm run electron:build:all
-```
-The output will be located in the `release/` directory.
+## 📖 Building for Production
 
-**Build for Web (Static HTML/JS):**
-```bash
-npm run build
-```
+- Web build: `npm run build`
+- Electron build: `npm run electron:build`
 
-## 🤖 AI Prompting Tips
+## 📄 License
 
-The embedded assistant is instructed to **Analyze & Plan** before writing code.
-Try the default "Moog Synthesizer" quick-prompt or custom requests like:
-- *"Add a stereo phaser after the current filter while keeping my keyboard mappings."*
-- *"Look at the code and add a high-shelf EQ at the end of the chain."*
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🛠 Tech Stack
-- **Frontend / Renderer:** React 19 + Vite + TypeScript
-- **Desktop Container:** Electron + `vite-plugin-electron`
-- **State Management:** Zustand (Single source of truth for code, AudioContext, and nodes)
-- **DSP Engine:** `@grame/faustwasm` (FaustPolyDspGenerator & FaustMonoDspGenerator)
-- **Editor:** `@monaco-editor/react`
+## 🤝 Contributing
 
-
-## ⚠️ Requirements
-- **Audio Gesture:** Modern browsers require user interaction to start the WebAudio context. You must click **"START ENGINE"** in the header to activate sound.
-
-## Licensing & Credits
-- **Engine:** Faust compiler and libraries are copyright © GRAME-CNCM.
-- **License:** GPL-3.0. See [LICENSE](LICENSE).
+Contributions are welcome! Please feel free to submit a Pull Request.
