@@ -41,7 +41,6 @@ const SessionPanel: React.FC = () => {
           { name: "STAY A WHILE", url: "./audio/stay-a-while.mp3" },
           { name: "DRY DRUMS", url: "./audio/dry_drums.wav" },
           { name: "CLEAN GUITAR", url: "./audio/clean_guitar.wav" },
-          { name: "DRY VOCALS", url: "./audio/dry_vocals.wav" },
           { name: "SYNTH CHORDS", url: "./audio/synth_chords.wav" },
           { name: "FULL MIX", url: "./audio/full_mix.wav" }
         ]);
