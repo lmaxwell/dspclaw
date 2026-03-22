@@ -2,7 +2,7 @@
 
  Faust DSP programming, featuring an embedded AI agent powered by the Model Context Protocol (MCP).
 
-![DSPCLAW UI Preview](public/favicon.svg)
+![DSPCLAW Screenshot](./assets/screenshot.jpg)
 
 ## 🚀 What this is
 
