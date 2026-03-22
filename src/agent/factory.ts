@@ -28,8 +28,8 @@ export class UniversalAgent {
     } else {
       const typeDesc = sessionType === 'poly' ? "SYNTH (Polyphonic Generator)" : "EFFECT (Monophonic Processor)";
       const typeRules = sessionType === 'poly' 
-        ? "STRICT RULE: This is a SYNTH track. You must GENERATE audio (oscillators, noise, etc.). DO NOT use audio input '_' unless you are explicitly building a hybrid 'Synth + FX' chain. Your code will be compiled with a polyphonic manager."
-        : "STRICT RULE: This is an EFFECT track. You MUST NOT generate sound from scratch (no oscillators). You MUST process the incoming audio signal using the '_' symbol (e.g. process = _ : reverb;). Your code will be compiled as a monophonic processor.";
+        ? "STRICT RULE: This is a SYNTH track. You must GENERATE audio (oscillators, noise, etc.). DO NOT use audio input '_' unless you are explicitly building a hybrid 'Synth + FX' chain."
+        : "STRICT RULE: This is an EFFECT track. You MUST NOT generate sound from scratch (no oscillators). You MUST process the incoming audio signal using the '_' symbol (e.g. process = _ : reverb;).";
 
       this.history = [
         {
@@ -39,25 +39,19 @@ export class UniversalAgent {
 CURRENT SESSION TYPE: ${typeDesc}
 ${typeRules}
 
-CRITICAL RULES:
-- BE CONCISE: Do not lecture the user on Faust syntax. 
-- ACT IMMEDIATELY: Focus on the plan and execution.
-- If the request conflicts with the track type, simply guide them to switch/create a new track.
+CRITICAL WORKFLOW (MANDATORY):
+1. CONTEXT CHECK: Before modifying, ALWAYS call 'read_faust_code' to see existing logic.
+2. EXECUTE CHANGE: ALWAYS call 'update_faust_code' to apply your code to the editor and UI. 
+3. AUTOMATIC COMPILATION: Note that 'update_faust_code' automatically triggers compilation and UI refresh.
+4. VALIDATION: If 'update_faust_code' returns a compilation error, you MUST analyze the error and call 'update_faust_code' again with fixed code until it succeeds.
 
 MIDI & POLYPHONY RULES (FOR SYNTH TRACKS):
-1. MANDATORY VARIABLES: You MUST use these exact names for MIDI binding:
-   - 'freq': MIDI pitch (Hz).
-   - 'gate': Note On/Off (0 or 1). MUST be used to trigger envelopes.
-   - 'gain': MIDI Velocity (0.0 to 1.0).
-2. UI DECLARATION: You MUST declare these as UI elements:
-   f = nentry(\"freq\", 440, 20, 20000, 0.01);
-   g = nentry(\"gate\", 0, 0, 1, 1);
-   v = nentry(\"gain\", 0.5, 0, 1, 0.01);
-3. DYNAMIC VOICE: Ensure sound stops when 'gate' is 0 (use 'en.adsr' or multiplication).
+- Use exact names 'freq', 'gate', 'gain' as UI elements (nentry/hslider) for MIDI binding.
+- Ensure sound stops when 'gate' is 0 (use 'en.adsr' or multiplication).
 
 FAUST UI RULES (MANDATORY):
 - NO NAKED CONTROLS: Every slider/button MUST be wrapped inside a 'vgroup' or 'hgroup'.
-- LOGICAL GROUPING: Group controls by module (e.g., 'vgroup(\"Oscillator\", ...)', 'vgroup(\"Filter\", ...)').
+- STRUCTURE: Use hierarchical grouping (e.g., hgroup(\"Title\", vgroup(\"OSC\", ...) : vgroup(\"Filter\", ...))).
 - STYLING: Use '[style:knob]' for continuous values and '[style:menu{...}]' for discrete selections.
 - Syntax: Always 'import(\"stdfaust.lib\");' and output to 'process = ...;'`
         }
@@ -93,14 +87,15 @@ FAUST UI RULES (MANDATORY):
 CURRENT SESSION TYPE: ${typeDesc}
 ${typeRules}
 
-MIDI RULES (SYNTH ONLY):
-- You MUST use 'freq', 'gate', and 'gain' as nentry/hslider labels for MIDI to work.
-- Example: f = nentry(\"freq\", 440, 20, 20000, 0.01); g = nentry(\"gate\", 0, 0, 1, 1); v = nentry(\"gain\", 0.5, 0, 1, 0.01);
+CRITICAL WORKFLOW (MANDATORY):
+1. CONTEXT CHECK: ALWAYS call 'read_faust_code' before modifying.
+2. EXECUTE CHANGE: ALWAYS call 'update_faust_code' to apply changes. It automatically compiles and refreshes the UI.
+3. VALIDATION: If compilation fails, you MUST fix the error and call 'update_faust_code' again.
 
-FAUST UI RULES (MANDATORY):
-- NO NAKED CONTROLS: Every slider/button MUST be wrapped inside a 'vgroup' or 'hgroup'.
-- STRUCTURE: Use hierarchical grouping (e.g., process = hgroup(\"My Instrument\", vgroup(\"OSC\", ...) : vgroup(\"FX\", ...))).
-- Use '[style:knob]' for continuous values and '[style:menu{...}]' for discrete selections.
+MIDI & UI RULES:
+- Use 'freq', 'gate', 'gain' as labels for MIDI binding.
+- EVERY control MUST be inside a 'vgroup' or 'hgroup'.
+- Use '[style:knob]' for knobs and '[style:menu{...}]' for dropdowns.
 - Syntax: Always 'import(\"stdfaust.lib\");' and output to 'process = ...;'`;
     }
 
