@@ -8,12 +8,12 @@ on:
       - 'v*'
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build_and_release:
     runs-on: macos-latest
+    
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Force runner to use Node 24 for all actions
 
     permissions:
       contents: write # Needed to create a release
@@ -35,8 +35,6 @@ jobs:
         run: npm run build
 
       - name: Package Electron App (macOS & Windows)
-        # Using electron-builder directly to target both platforms.
-        # macos-latest comes with wine installed for Windows cross-compilation.
         run: npx electron-builder --mac --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,7 +50,7 @@ jobs:
           generate_release_notes: true
 
       - name: Deploy to Vercel (Production)
-        uses: amondnet/vercel-action@v20
+        uses: amondnet/vercel-action@v25 # Upgraded from v20 to v25
         if: startsWith(github.ref, 'refs/tags/')
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
