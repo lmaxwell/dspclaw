@@ -15,7 +15,6 @@ node_modules/
 .vscode/
 .vscode-upload.json
 eslint.config.js
-tsconfig*.json
 GEMINI.md
 README.md
 LICENSE
