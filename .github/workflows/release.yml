@@ -43,7 +43,7 @@ jobs:
           ELECTRON: "true"
 
       - name: Package Electron App (macOS & Windows)
-        run: npx electron-builder --mac --win
+        run: npx electron-builder --mac x64 arm64 --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON: "true"
