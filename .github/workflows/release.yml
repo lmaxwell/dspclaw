@@ -35,13 +35,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Web Assets
-        run: npm run build
+      - name: Build Project (Web & Electron)
+        run: |
+          npm run build
+          npx tsc -p electron/tsconfig.json || npx tsc # Ensure electron main is compiled if not handled by vite
+        env:
+          ELECTRON: "true"
 
       - name: Package Electron App (macOS & Windows)
         run: npx electron-builder --mac --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON: "true"
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
       - name: Release
