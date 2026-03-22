@@ -1,0 +1,82 @@
+{
+  "name": "dspclaw",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Professional AI-Powered Faust DSP IDE",
+  "author": "DSPCLAW Team",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron:dev": "cross-env ELECTRON=true vite",
+    "electron:build": "cross-env ELECTRON=true tsc -b && cross-env ELECTRON=true vite build && electron-builder",
+    "electron:build:mac": "cross-env ELECTRON=true tsc -b && cross-env ELECTRON=true vite build && electron-builder --mac zip",
+    "electron:build:win": "cross-env ELECTRON=true tsc -b && cross-env ELECTRON=true vite build && electron-builder --win zip",
+    "electron:build:all": "cross-env ELECTRON=true tsc -b && cross-env ELECTRON=true vite build && electron-builder -mw zip",
+    "test:ci": "npm run test:electron && npm run test:vercel",
+    "test:electron": "npm run electron:build:all",
+    "test:vercel": "npx vercel build && echo 'Vercel build successful. Run `npx vercel deploy --prebuilt` to test deployment.'"
+  },
+  "main": "dist-electron/main.js",
+  "build": {
+    "appId": "com.dspclaw.app",
+    "productName": "DSPCLAW",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "mac": {
+      "category": "public.app-category.music"
+    },
+    "win": {
+      "target": [
+        "zip"
+      ]
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "lmaxwell",
+      "repo": "https://github.com/lmaxwell/dspclaw/"
+    }
+  },
+  "dependencies": {
+    "@grame/faustwasm": "^0.15.7",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@monaco-editor/react": "^4.7.0",
+    "allotment": "^1.20.5",
+    "axios": "^1.13.6",
+    "electron-updater": "^6.8.3",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.12.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/webmidi": "^2.1.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "esbuild": "^0.27.4",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "sharp": "^0.34.5",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "vercel": "^50.35.0",
+    "vite": "^8.0.1",
+    "vite-plugin-electron": "^0.29.1",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  }
+}

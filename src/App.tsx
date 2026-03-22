@@ -1,0 +1,45 @@
+import React from 'react';
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
+import Header from './components/Header';
+import ChatPanel from './components/Chat/ChatPanel';
+import EditorPanel from './components/Editor/EditorPanel';
+import FaustUIPanel from './components/FaustUI/FaustUIPanel';
+import SessionPanel from './components/SessionPanel';
+import './App.css';
+
+const App: React.FC = () => {
+  return (
+    <div className="app-container">
+      <Header />
+      <div className="main-layout">
+        <Allotment>
+          {/* Left Sidebar: Session Management */}
+          <Allotment.Pane preferredSize={240} minSize={200}>
+            <SessionPanel />
+          </Allotment.Pane>
+
+          {/* Center Column: UI (Top) and Editor (Bottom) */}
+          <Allotment.Pane minSize={400}>
+            <Allotment vertical>
+              <Allotment.Pane preferredSize="50%" minSize={200}>
+                <FaustUIPanel />
+              </Allotment.Pane>
+              
+              <Allotment.Pane preferredSize="50%" minSize={200}>
+                <EditorPanel showHeader={true} />
+              </Allotment.Pane>
+            </Allotment>
+          </Allotment.Pane>
+          
+          {/* Right Sidebar: Chat */}
+          <Allotment.Pane preferredSize={350} minSize={250}>
+            <ChatPanel />
+          </Allotment.Pane>
+        </Allotment>
+      </div>
+    </div>
+  );
+};
+
+export default App;

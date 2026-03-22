@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/openai/:path*",
+      "destination": "https://api.openai.com/v1/:path*"
+    },
+    {
+      "source": "/api/anthropic/:path*",
+      "destination": "https://api.anthropic.com/v1/:path*"
+    },
+    {
+      "source": "/api/moonshot/:path*",
+      "destination": "https://api.moonshot.cn/v1/:path*"
+    }
+  ]
+}
