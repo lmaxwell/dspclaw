@@ -1,0 +1,30 @@
+# Electron specific
+electron/
+dist-electron/
+release/
+build/
+scripts/
+vite.config.ts.timestamp-*
+
+# Git
+.git/
+.github/
+
+# Development
+node_modules/
+.vscode/
+.vscode-upload.json
+eslint.config.js
+tsconfig*.json
+GEMINI.md
+README.md
+LICENSE
+
+# Misc
+.DS_Store
+*.asar
+*.wav
+*.mp3
+!public/audio/*.wav
+!public/audio/*.mp3
+!public/faustwasm/*
