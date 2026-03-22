@@ -41,7 +41,7 @@
     "publish": {
       "provider": "github",
       "owner": "lmaxwell",
-      "repo": "https://github.com/lmaxwell/dspclaw/"
+      "repo": "dspclaw"
     }
   },
   "dependencies": {
