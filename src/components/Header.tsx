@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore, type AIProvider } from '../store';
-import { Play, Square, Activity, Settings, X, DownloadCloud } from 'lucide-react';
+import { Play, Square, Activity, Settings, X, DownloadCloud, Github } from 'lucide-react';
 import { getApiUrl, aiFetch, isElectron } from '../utils/env';
 
 const Header: React.FC = () => {
@@ -135,12 +135,31 @@ const Header: React.FC = () => {
       // @ts-ignore
       WebkitAppRegion: 'drag',
     }}>
-      {/* Left: Logo */}
-      <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <Activity size={18} color="var(--accent)" />
-        <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-main)' }}>
-          DSPCLAW
-        </span>
+      {/* Left: Logo & GitHub */}
+      <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Activity size={18} color="var(--accent)" />
+          <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-main)' }}>
+            DSPCLAW
+          </span>
+        </div>
+        <a 
+          href="https://github.com/lmaxwell/dspclaw" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            color: '#555', 
+            display: 'flex', 
+            alignItems: 'center', 
+            transition: 'color 0.2s',
+            // @ts-ignore
+            WebkitAppRegion: 'no-drag'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-main)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = '#555'}
+        >
+          <Github size={16} />
+        </a>
       </div>
 
       {/* Center: Global Toggle */}
