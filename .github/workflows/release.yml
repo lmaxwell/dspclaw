@@ -8,26 +8,22 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Global opt-in for Node 24
+
 jobs:
   build_and_release:
     runs-on: macos-latest
     
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
     permissions:
       contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           node-version: '24'
           cache: 'npm'
@@ -38,7 +34,7 @@ jobs:
       - name: Build Project (Web & Electron)
         run: |
           npm run build
-          npx tsc -p electron/tsconfig.json || npx tsc # Ensure electron main is compiled if not handled by vite
+          npx tsc -p electron/tsconfig.json || npx tsc
         env:
           ELECTRON: "true"
 
@@ -47,13 +43,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON: "true"
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           files: |
             release/*.zip
@@ -64,8 +57,6 @@ jobs:
       - name: Deploy to Vercel (Production)
         uses: amondnet/vercel-action@v25
         if: startsWith(github.ref, 'refs/tags/')
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID}}
