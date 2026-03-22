@@ -1,6 +1,6 @@
 # DSPCLAW
 
-Faust DSP programming, featuring an embedded AI agent powered by the Model Context Protocol (MCP).
+Faust DSP programming, featuring an embedded AI agent.
 
 ![DSPCLAW Screenshot](./assets/screenshot.jpg)
 
@@ -12,7 +12,7 @@ DSPCLAW is a sandbox for exploring AI-assisted Faust code generation. It allows 
 
 ## ✨ Key Features
 
-- **Embedded AI Agent**: Powered by Model Context Protocol (MCP), the agent can read, write, and compile Faust code based on your requirements.
+- **Embedded AI Agent**: the agent can read, write, and compile Faust code based on your requirements.
 - **Industry-Level VST UI**: Photorealistic control surface with radial knobs, LED tracking rings, and hierarchical grouping.
 - **Polyphonic MIDI**: Full support for MIDI controllers and computer keyboard mappings.
 - **Live MIDI Visualization**: Real-time display of active MIDI notes and signal processing.
