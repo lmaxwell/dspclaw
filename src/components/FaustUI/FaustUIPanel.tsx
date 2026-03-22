@@ -53,7 +53,7 @@ const FaustUIPanel: React.FC = () => {
     if (styleStr && styleStr.startsWith('menu')) {
       const optionsMatch = styleStr.match(/menu\{(.*?)\}/);
       if (optionsMatch) {
-        menuOptions = optionsMatch[1].split(';').map(opt => {
+        menuOptions = optionsMatch[1].split(';').map((opt: string) => {
           const [l, v] = opt.split(':');
           return {
             label: l.replace(/'/g, '').trim(),
