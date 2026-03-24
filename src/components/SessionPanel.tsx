@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { Plus, Music, Waves, Trash2, Settings2, Keyboard, Disc, Play, Pause, Volume2 } from 'lucide-react';
 
 import { isElectron } from '../utils/env';
+import { compileAndRun } from '../agent/tools/compile_and_run';
 
 const SessionPanel: React.FC = () => {
   const { 
@@ -68,12 +69,9 @@ const SessionPanel: React.FC = () => {
   const dspNode = activeSession?.dspNode;
 
   const triggerAutoCompile = async () => {
-    if (isInitialized && (window as any).mcpClient) {
+    if (isInitialized) {
       try {
-        await (window as any).mcpClient.callTool({
-          name: "compile_and_run",
-          arguments: {}
-        });
+        await compileAndRun.execute('auto-compile', { __sessionId: activeSessionId });
       } catch (e) {
         console.error("Auto-compile failed:", e);
       }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore, type AIProvider } from '../store';
 import { Play, Square, Activity, Settings, X, DownloadCloud, Github } from 'lucide-react';
-import { getApiUrl, aiFetch, isElectron } from '../utils/env';
+import { aiFetch, isElectron } from '../utils/env';
 
 const Header: React.FC = () => {
   const { 
@@ -11,7 +11,7 @@ const Header: React.FC = () => {
     provider,
     apiKey,
     model,
-    customBaseUrl,
+    models,
     setSettings,
     getActiveSession,
   } = useStore();
@@ -51,12 +51,10 @@ const Header: React.FC = () => {
       let headers: any = { 'Authorization': `Bearer ${apiKey}` };
 
       switch (provider) {
-        case 'openai': url = getApiUrl('/api/openai/models'); break;
-        case 'moonshot': url = getApiUrl('/api/moonshot/models'); break;
-        case 'anthropic': 
-          url = getApiUrl('/api/anthropic/models'); 
-          headers = { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
-          break;
+        case 'moonshot': url = 'https://api.moonshot.cn/v1/models'; break;
+        case 'deepseek': url = 'https://api.deepseek.com/v1/models'; break;
+        case 'gemini': url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey; headers = {}; break;
+        case 'glm': url = 'https://open.bigmodel.cn/api/paas/v4/models'; break;
       }
 
       if (!url) return;
@@ -66,7 +64,13 @@ const Header: React.FC = () => {
         method: 'GET',
         headers
       });
-      let fetchedModels: string[] = response.data.data.map((m: any) => m.id);
+      
+      let fetchedModels: string[] = [];
+      if (provider === 'gemini' && response.data.models) {
+        fetchedModels = response.data.models.map((m: any) => m.name.replace('models/', ''));
+      } else if (response.data && response.data.data) {
+        fetchedModels = response.data.data.map((m: any) => m.id);
+      }
 
       fetchedModels.sort((a, b) => {
         const keywords = ['gpt-4', 'sonnet', 'opus', 'v3', 'chat', 'latest', 'reasoner'];
@@ -251,27 +255,34 @@ const Header: React.FC = () => {
                         onChange={(e) => setSettings({ provider: e.target.value as AIProvider })} 
                         style={{ ...inputStyle, cursor: 'pointer', paddingRight: '24px' }}
                       >
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
-                        <option value="moonshot">Moonshot</option>
-                        <option value="custom">Custom (OpenAI Compatible)</option>
+                        <option value="moonshot">Kimi (Moonshot)</option>
+                        <option value="gemini">Gemini</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="glm">GLM (Zhipu AI)</option>
                       </select>
                       <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', fontSize: '0.6rem' }}>▼</div>
                     </div>
                   </div>
 
-                  {provider === 'custom' && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '8px' }}>Base URL</label>
-                      <input 
-                        type="text" 
-                        value={customBaseUrl} 
-                        placeholder="https://api.your-provider.com/v1/chat/completions" 
-                        onChange={(e) => setSettings({ customBaseUrl: e.target.value })} 
-                        style={inputStyle} 
-                      />
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#888', marginBottom: '4px' }}>Model</label>
+                    <div style={{ position: 'relative' }}>
+                      <select 
+                        value={model} 
+                        onChange={(e) => setSettings({ model: e.target.value })} 
+                        style={{ ...inputStyle, cursor: 'pointer', paddingRight: '24px' }}
+                      >
+                        {models.length > 0 ? (
+                          models.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))
+                        ) : (
+                          <option value={model}>{model || 'Select a model...'}</option>
+                        )}
+                      </select>
+                      <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', fontSize: '0.6rem' }}>▼</div>
                     </div>
-                  )}
+                  </div>
 
                   <div style={{ marginBottom: '24px' }}>
                     <label style={{ display: 'block', fontSize: '0.7rem', color: '#888', marginBottom: '4px' }}>API Key</label>

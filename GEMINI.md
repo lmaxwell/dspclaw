@@ -1,11 +1,11 @@
-# Faust Web MCP IDE (DSPCLAW)
+# Faust Web IDE (DSPCLAW)
 
-A professional, industry-level web-based IDE for Faust DSP programming, featuring an embedded AI agent powered by the Model Context Protocol (MCP).
+A professional, industry-level web-based IDE for Faust DSP programming, featuring an embedded AI agent powered by `pi-mono`.
 
 ## 🚀 Key Features
 - **Cross-Platform Desktop App:** Now supports Electron for a native desktop experience.
-- **Embedded MCP Server:** Runs entirely in the browser using `@modelcontextprotocol/sdk` via `InMemoryTransport`.
-- **AI Agent:** Autonomously writes, compiles, and surgically modifies Faust code with context-awareness via MCP tools.
+- **AI Agent:** Autonomously writes, compiles, and surgically modifies Faust code with context-awareness via `pi-agent-core` and `pi-ai`.
+- **Rich Chat UI:** Modern chat interface with streaming, markdown, and interactive tool-call visualization using `pi-web-ui`.
 - **Industry-Level VST UI:** Photorealistic control surface with radial knobs, LED tracking rings, and hierarchical grouping.
 - **Polyphonic MIDI:** Supports polyphony via MIDI controllers and computer keyboard mappings.
 - **Live MIDI Visualization:** Displays active MIDI notes in real-time.
@@ -15,17 +15,18 @@ A professional, industry-level web-based IDE for Faust DSP programming, featurin
 ## 🛠 Tech Stack
 - **Platform:** React + Vite + TypeScript + Electron.
 - **State Management:** Zustand (Single source of truth in `src/store.ts` for code, AudioContext, and nodes).
+- **AI Engine:** `@mariozechner/pi-ai` and `@mariozechner/pi-agent-core`.
+- **Chat UI:** `@mariozechner/pi-web-ui` via Lit components.
 - **DSP Engine:** `@grame/faustwasm` using `FaustPolyDspGenerator` and `FaustMonoDspGenerator`.
 - **Layout:** `allotment` for resizable sidebars and panes.
 - **Editor:** `@monaco-editor/react` for high-performance code editing.
-- **AI Integration:** MCP (Model Context Protocol) for tool-based AI interactions.
 
 ## 📂 Architecture & Conventions
 - **Global Initialization:** Managed via `src/init.ts` to prevent duplicate library instantiations.
-- **Tool-Driven AI:** The agent uses the following MCP tools (defined in `src/mcp/server.ts`):
+- **Tool-Driven AI:** The agent uses specialized Faust DSP tools (defined in `src/agent/tools/`):
     - `read_faust_code`: Get current Faust code.
-    - `update_faust_code`: Update Faust code.
-    - `compile_and_run`: Compile and refresh the DSP engine/UI.
+    - `update_faust_code`: Update and compile Faust code.
+    - `compile_and_run`: Force refresh the DSP engine/UI.
     - `list_stdlib_files`: List Faust standard library (.lib) files.
     - `read_stdlib_file`: Read content of standard library files.
 - **UI Metadata:** Use Faust labels like `[style:knob]` and `[unit:Hz]` for professional rendering in the VST UI.
@@ -39,11 +40,11 @@ A professional, industry-level web-based IDE for Faust DSP programming, featurin
 - **Build for Production (Web):** `npm run build`
 - **Build for Production (Electron):** `npm run electron:build`
 - **Lint Codebase:** `npm run lint`
+- **Test Codebase:** `npm test`
 - **Preview Production Build:** `npm run preview`
 
 ## 🧪 AI Prompting & Development
 The assistant is designed to **Analyze & Plan** before writing code.
-When interacting with the AI:
 - Use the "Moog Synthesizer" quick-prompt for a baseline setup.
 - Request specific DSP modifications like "Add a stereo phaser after the current filter".
 - The AI can inspect the Faust standard library to find relevant functions and implementations.

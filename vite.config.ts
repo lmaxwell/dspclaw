@@ -69,7 +69,19 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
   },
+  define: {
+    'process.env': {}
+  },
+  optimizeDeps: {
+    include: [
+      'react-markdown',
+      'remark-gfm',
+      'react-syntax-highlighter',
+      'react-syntax-highlighter/dist/esm/styles/prism'
+    ]
+  },
   server: {
+    port: 5174,
     proxy: {
       '/api/openai': {
         target: 'https://api.openai.com/v1',
@@ -86,10 +98,28 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/moonshot/, ''),
       },
+      '/api/deepseek': {
+        target: 'https://api.deepseek.com/v1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/deepseek/, ''),
+      },
       '/api/glm': {
         target: 'https://open.bigmodel.cn/api/paas/v4',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/glm/, ''),
+      },
+      '/api/gemini': {
+        target: 'https://generativelanguage.googleapis.com/v1beta',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gemini/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const key = req.headers['x-goog-api-key'];
+            if (key) {
+              proxyReq.path += (proxyReq.path.includes('?') ? '&' : '?') + `key=${key}`;
+            }
+          });
+        }
       }
     },
   },

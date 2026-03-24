@@ -11,6 +11,14 @@
     {
       "source": "/api/moonshot/:path*",
       "destination": "https://api.moonshot.cn/v1/:path*"
+    },
+    {
+      "source": "/api/deepseek/:path*",
+      "destination": "https://api.deepseek.com/v1/:path*"
+    },
+    {
+      "source": "/api/glm/:path*",
+      "destination": "https://open.bigmodel.cn/api/paas/v4/:path*"
     }
   ]
 }

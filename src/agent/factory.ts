@@ -1,299 +1,224 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { type ChatMessage } from './types';
-import { getApiUrl, aiFetch } from '../utils/env';
+import { getModel } from "@mariozechner/pi-ai";
+import { Agent } from "@mariozechner/pi-agent-core";
+import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { useStore } from "../store";
+import { isElectron } from "../utils/env";
+import { tools } from "./tools/index";
+import type { ChatMessage } from "./types";
 
-export type AIProvider = 'openai' | 'anthropic' | 'moonshot' | 'glm' | 'custom';
+/**
+ * Creates and configures an Agent instance for a specific session.
+ */
+export function createAgent(sessionId: string) {
+  const store = useStore.getState();
+  const session = store.sessions.find(s => s.id === sessionId);
+  if (!session) throw new Error(`Session ${sessionId} not found`);
 
-export class UniversalAgent {
-  private provider: AIProvider;
-  private apiKey: string;
-  private model: string;
-  private customBaseUrl: string;
-  private sessionType: 'poly' | 'mono';
-  private sessionId: string;
-  private client: Client;
-  public history: ChatMessage[] = [];
-
-  constructor(provider: AIProvider, apiKey: string, model: string, mcpClient: Client, initialHistory?: ChatMessage[], customBaseUrl?: string, sessionType: 'poly' | 'mono' = 'poly', sessionId: string = '') {
-    this.provider = provider;
-    this.apiKey = apiKey;
-    this.model = model;
-    this.customBaseUrl = customBaseUrl || '';
-    this.sessionType = sessionType;
-    this.sessionId = sessionId;
-    this.client = mcpClient;
-    
-    if (initialHistory && initialHistory.length > 0) {
-      this.history = initialHistory;
-    } else {
-      const typeDesc = sessionType === 'poly' ? "SYNTH (Polyphonic Generator)" : "EFFECT (Monophonic Processor)";
-      const typeRules = sessionType === 'poly' 
-        ? "STRICT RULE: This is a SYNTH track. You must GENERATE audio (oscillators, noise, etc.). DO NOT use audio input '_' unless you are explicitly building a hybrid 'Synth + FX' chain."
-        : "STRICT RULE: This is an EFFECT track. You MUST NOT generate sound from scratch (no oscillators). You MUST process the incoming audio signal using the '_' symbol (e.g. process = _ : reverb;).";
-
-      this.history = [
-        {
-          role: 'system',
-          content: `You are an expert Faust DSP developer. Your mission is to build professional audio tools with beautiful structured UIs.
-
-CURRENT SESSION TYPE: ${typeDesc}
-${typeRules}
-
-CRITICAL WORKFLOW (MANDATORY):
-1. CONTEXT CHECK: Before modifying, ALWAYS call 'read_faust_code' to see existing logic.
-2. EXECUTE CHANGE: ALWAYS call 'update_faust_code' to apply your code to the editor and UI. 
-3. AUTOMATIC COMPILATION: Note that 'update_faust_code' automatically triggers compilation and UI refresh.
-4. VALIDATION: If 'update_faust_code' returns a compilation error, you MUST analyze the error and call 'update_faust_code' again with fixed code until it succeeds.
-
-MIDI & POLYPHONY RULES (FOR SYNTH TRACKS):
-- Use exact names 'freq', 'gate', 'gain' as UI elements (nentry/hslider) for MIDI binding.
-- Ensure sound stops when 'gate' is 0 (use 'en.adsr' or multiplication).
-
-FAUST UI RULES (MANDATORY):
-- NO NAKED CONTROLS: Every slider/button MUST be wrapped inside a 'vgroup' or 'hgroup'.
-- STRUCTURE: Use hierarchical grouping (e.g., hgroup(\"Title\", vgroup(\"OSC\", ...) : vgroup(\"Filter\", ...))).
-- STYLING: Use '[style:knob]' for continuous values and '[style:menu{...}]' for discrete selections.
-- Syntax: Always 'import(\"stdfaust.lib\");' and output to 'process = ...;'`
-        }
-      ];
-    }
-  }
-
-  private getBaseUrl() {
-    switch (this.provider) {
-      case 'openai': return getApiUrl('/api/openai/chat/completions');
-      case 'anthropic': return getApiUrl('/api/anthropic/messages');
-      case 'moonshot': return getApiUrl('/api/moonshot/chat/completions');
-      case 'custom': return this.customBaseUrl;
-      default: return '';
-    }
-  }
-
-  async chat(userMessage: string, useMcp: boolean, onUpdate: (history: ChatMessage[]) => void, signal?: AbortSignal) {
-    const currentHistory = [...this.history];
-    currentHistory.push({ role: 'user', content: userMessage });
-    onUpdate([...currentHistory]);
-
-    // Ensure system prompt is accurate for the current session state
-    const systemIdx = currentHistory.findIndex(m => m.role === 'system');
-    if (systemIdx !== -1) {
-      const typeDesc = this.sessionType === 'poly' ? "SYNTH (Polyphonic Generator)" : "EFFECT (Monophonic Processor)";
-      const typeRules = this.sessionType === 'poly' 
-        ? "STRICT RULE: This is a SYNTH track. You must GENERATE audio using oscillators/noise."
-        : "STRICT RULE: This is an EFFECT track. You MUST process the incoming audio signal using the '_' symbol.";
-
-      currentHistory[systemIdx].content = `You are an expert Faust DSP developer. Build professional tools with beautiful structured UIs.
-
-CURRENT SESSION TYPE: ${typeDesc}
-${typeRules}
-
-CRITICAL WORKFLOW (MANDATORY):
-1. CONTEXT CHECK: ALWAYS call 'read_faust_code' before modifying.
-2. EXECUTE CHANGE: ALWAYS call 'update_faust_code' to apply changes. It automatically compiles and refreshes the UI.
-3. VALIDATION: If compilation fails, you MUST fix the error and call 'update_faust_code' again.
-
-MIDI & UI RULES:
-- Use 'freq', 'gate', 'gain' as labels for MIDI binding.
-- EVERY control MUST be inside a 'vgroup' or 'hgroup'.
-- Use '[style:knob]' for knobs and '[style:menu{...}]' for dropdowns.
-- Syntax: Always 'import(\"stdfaust.lib\");' and output to 'process = ...;'`;
-    }
-
-    const { tools } = useMcp ? await this.client.listTools() : { tools: [] };
-    let isRunning = true;
-
-    const safeParseJson = (jsonStr: string) => {
-      try {
-        return JSON.parse(jsonStr);
-      } catch (e) {
-        throw new Error(`Invalid JSON in tool arguments: ${jsonStr.substring(0, 100)}...`);
+  const agent = new Agent({
+    getApiKey: (provider) => {
+      const state = useStore.getState();
+      // If the model was mapped to 'openai' but the actual provider is moonshot/deepseek
+      if (provider === 'openai') {
+        if (state.provider === 'moonshot') return state.apiKeys.moonshot;
+        if (state.provider === 'deepseek') return state.apiKeys.deepseek;
       }
+      // pi-ai uses 'google' but we store it as 'gemini'
+      if (provider === 'google' || provider === 'gemini') {
+        return state.apiKeys.gemini;
+      }
+      // pi-ai uses 'zai' but we store it as 'glm'
+      if (provider === 'zai') {
+        return state.apiKeys.glm;
+      }
+      return (state.apiKeys as any)[provider];
+    }
+  });
+
+  // 1. Initialize Model from store config
+  let piProvider: string = store.provider;
+  if (store.provider === 'gemini') piProvider = 'google';
+  if (store.provider === 'glm') piProvider = 'zai';
+  if (store.provider === 'moonshot' || store.provider === 'deepseek') piProvider = 'openai';
+
+  let rawModel = getModel(piProvider as any, store.model as any);
+
+  // Fallback for providers/models not in the pi-ai built-in registry (like Moonshot or DeepSeek)
+  if (!rawModel) {
+    const fallbackModel = getModel('openai', 'gpt-4o');
+    let defaultBaseUrl = 'https://api.openai.com/v1';
+    if (store.provider === 'moonshot') defaultBaseUrl = isElectron ? 'https://api.moonshot.cn/v1' : `${window.location.origin}/api/moonshot`;
+    if (store.provider === 'deepseek') defaultBaseUrl = isElectron ? 'https://api.deepseek.com/v1' : `${window.location.origin}/api/deepseek`;
+    if (store.provider === 'gemini') defaultBaseUrl = isElectron ? 'https://generativelanguage.googleapis.com' : `${window.location.origin}/api/gemini`;
+
+    rawModel = {
+      ...fallbackModel,
+      id: store.model || 'gpt-4o',
+      name: store.model || 'GPT-4o',
+      provider: piProvider,
+      baseUrl: defaultBaseUrl
+    } as any;
+  }
+
+  const model = { ...rawModel! };
+  
+  // Ensure Gemini/Google uses the correct base URL and API type
+  if (store.provider === 'gemini') {
+    model.baseUrl = isElectron 
+      ? `https://generativelanguage.googleapis.com/v1beta` 
+      : `${window.location.origin}/api/gemini`;
+    // Force google-generative-ai for Gemini models
+    (model as any).api = 'google-generative-ai';
+
+    // Enable thinking for thinking-enabled models
+    if (model.id.includes('thinking')) {
+      (model as any).config = {
+        ...(model as any).config,
+        thinking: {
+          enabled: true,
+          budgetTokens: 16384
+        }
+      };
+    }
+  }
+
+  // FORCE standard completions API for compatibility with Moonshot/DeepSeek endpoints
+  if (store.provider === 'moonshot' || store.provider === 'deepseek') {
+    (model as any).api = 'openai-completions';
+  }
+
+  if (store.provider === 'moonshot') {
+    model.baseUrl = isElectron ? 'https://api.moonshot.cn/v1' : `${window.location.origin}/api/moonshot`;
+  } else if (store.provider === 'deepseek') {
+    model.baseUrl = isElectron ? 'https://api.deepseek.com/v1' : `${window.location.origin}/api/deepseek`;
+  }
+
+  agent.setModel(model);
+  
+  // 2. Configure System Prompt
+  const typeDesc = session.type === 'poly' ? "SYNTH (Polyphonic Generator)" : "EFFECT (Monophonic Processor)";
+  const typeRules = session.type === 'poly' 
+    ? "STRICT RULE: This is a SYNTH track. You must GENERATE audio (oscillators, noise, etc.). DO NOT use audio input '_' unless you are explicitly building a hybrid 'Synth + FX' chain."
+    : "STRICT RULE: This is an EFFECT track. You MUST NOT generate sound from scratch (no oscillators). You MUST process the incoming audio signal using the '_' symbol (e.g. process = _ : reverb;).";
+
+  const systemPrompt = `You are CLAW, a world-class Expert Audio DSP Engineer specializing in the Faust Programming Language. 
+Your goal is to generate high-performance, sample-rate independent audio code for use in professional DAWs and web environments.
+
+### REASONING PROTOCOL (DEEP THINK)
+Before outputting any Faust code, you MUST use a <think> block to perform the following:
+1. Analyze the requested DSP algorithm (e.g., Filter, Oscillator, Effect).
+2. Plan the signal flow using Block Diagram Algebra (Parallel, Sequential, Split, Merge, Recursive).
+3. Identify necessary libraries from 'stdfaust.lib' (e.g., 'fi', 'os', 're', 'ba').
+4. Determine UI/MIDI metadata requirements (e.g., [style:knob], [midi:ctrl]).
+
+### SESSION CONTEXT
+- **CURRENT TRACK:** ${typeDesc}
+- ${typeRules}
+
+### FAUST IMPLEMENTATION RULES
+1. **Context First:** Always call 'read_faust_code' before making any assumptions about the current signal chain.
+2. **Standard Library:** ALWAYS include 'import("stdfaust.lib");' at the start and prefer standard library functions.
+3. **Functional Paradigm:** ADHERE strictly to the functional paradigm. Avoid imperative logic.
+4. **Zipper Noise Prevention:** ALWAYS apply 'si.smoo' to UI control signals (sliders/knobs) used in multipliers or filters.
+5. **UI & Metadata:** Use standard metadata tags for DAW integration:
+    - [style:knob] for sliders.
+    - [unit:dB] or [unit:Hz] for appropriate scales.
+    - [midi:ctrl CC] for MIDI mapping.
+    - Every control MUST be logically grouped (vgroup/hgroup).
+6. **Validation:** If 'update_faust_code' returns an error, debug the AST/syntax error technically and retry immediately.
+
+### SYNTAX CONSTRAINTS (FAUST BNF)
+Ensure all code follows this grammar structure:
+- Sequential: A : B
+- Parallel: A , B
+- Split: A <: B
+- Merge: A :> B
+- Recursive: A ~ B
+
+### YOUR MISSION
+Transform simple ideas into high-fidelity DSP tools. When asked to "add a feature," consider how it fits into the entire signal flow (gain staging, impedance, frequency response).`;
+
+  agent.setSystemPrompt(systemPrompt);
+
+  // 3. Configure Tools (Injecting sessionId)
+  agent.setTools(tools.map(t => ({
+    ...t,
+    execute: async (id: string, args: any, toolSignal?: AbortSignal, onUpdate?: any) => {
+      return t.execute(id, { ...args, __sessionId: sessionId }, toolSignal, onUpdate);
+    }
+  })));
+
+  // 4. Load History (filtering out system messages)
+  const history = (session.messages || []).filter(m => m.role !== 'system') as AgentMessage[];
+  agent.replaceMessages(history);
+
+  return agent;
+}
+
+/**
+ * Enhanced Agent Loop with robust event handling and logging.
+ */
+export async function runAgentLoop(
+  sessionId: string, 
+  userMessage: string, 
+  onUpdate: (history: ChatMessage[]) => void,
+  signal?: AbortSignal
+) {
+  console.log(`--- runAgentLoop START --- session: ${sessionId}`);
+  try {
+    const agent = createAgent(sessionId);
+    
+    // Throttle UI updates to prevent React rendering bottlenecks during fast streams
+    let lastUpdate = 0;
+    const throttleMs = 50; // Max ~20 FPS updates
+    let pendingUpdateTimeout: any = null;
+
+    const triggerUpdate = () => {
+      const history = [...agent.state.messages];
+      // If we are currently streaming a message, add it to the history for the UI
+      if (agent.state.isStreaming && agent.state.streamMessage) {
+        history.push(agent.state.streamMessage);
+      }
+      onUpdate(history as ChatMessage[]);
     };
 
-    while (isRunning) {
-      if (signal?.aborted) {
-        currentHistory.push({ role: 'assistant', content: "🛑 Interrupted." });
-        onUpdate([...currentHistory]);
-        return;
-      }
-
-      try {
-        let response;
-        if (this.provider !== 'anthropic') {
-          const payload: any = {
-            model: this.model,
-            messages: currentHistory.map(msg => {
-              const m: any = { role: msg.role, content: msg.content };
-              if (msg.reasoning_content) m.reasoning_content = msg.reasoning_content;
-              if (msg.tool_call_id) m.tool_call_id = msg.tool_call_id;
-              if (msg.name) m.name = msg.name;
-              if (msg.tool_calls) m.tool_calls = msg.tool_calls;
-              return m;
-            })
-          };
-
-          if (useMcp && tools.length > 0) {
-            payload.tools = tools.map(t => ({
-              type: "function",
-              function: {
-                name: t.name,
-                description: t.description,
-                parameters: t.inputSchema
-              }
-            }));
-          }
-
-          response = await aiFetch({
-            url: this.getBaseUrl(),
-            method: 'POST',
-            data: payload,
-            headers: {
-              'Authorization': `Bearer ${this.apiKey}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          const choice = response.data.choices[0].message;
-          currentHistory.push(choice);
-          onUpdate([...currentHistory]);
-
-          if (useMcp && choice.tool_calls) {
-            for (const toolCall of choice.tool_calls) {
-              try {
-                const args = safeParseJson(toolCall.function.arguments);
-                // INJECT sessionId into arguments
-                const result = await this.client.callTool({
-                  name: toolCall.function.name,
-                  arguments: { ...args, __sessionId: this.sessionId }
-                });
-                currentHistory.push({
-                  role: 'tool',
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: JSON.stringify(result.content)
-                });
-              } catch (parseError: any) {
-                currentHistory.push({
-                  role: 'tool',
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: JSON.stringify([{ type: 'text', text: `Error: ${parseError.message}. Please provide valid JSON for tool arguments.` }])
-                });
-              }
-              onUpdate([...currentHistory]);
-            }
-            continue;
+    agent.subscribe((event) => {
+      console.log(`Agent Event: ${event.type}`, event);
+      
+      if (event.type === 'agent_end' || event.type === 'turn_end' || event.type === 'message_update') {
+        const now = Date.now();
+        
+        if (event.type === 'message_update') {
+          // Throttle token streams
+          if (now - lastUpdate >= throttleMs) {
+            lastUpdate = now;
+            triggerUpdate();
+          } else {
+            // Ensure the last chunk gets rendered if the stream stops abruptly
+            clearTimeout(pendingUpdateTimeout);
+            pendingUpdateTimeout = setTimeout(() => {
+              lastUpdate = Date.now();
+              triggerUpdate();
+            }, throttleMs - (now - lastUpdate));
           }
         } else {
-          const systemMsg = currentHistory.find(m => m.role === 'system')?.content || '';
-          const chatMsgs = currentHistory.filter(m => m.role !== 'system').map(m => {
-            if (m.role === 'tool') {
-              return {
-                role: 'user',
-                content: [
-                  {
-                    type: 'tool_result',
-                    tool_use_id: m.tool_call_id,
-                    content: m.content
-                  }
-                ]
-              };
-            }
-            if (m.tool_calls) {
-              return {
-                role: 'assistant',
-                content: [
-                  { type: 'text', text: m.content || 'Calling tool...' },
-                  ...m.tool_calls.map(tc => {
-                    let input = {};
-                    try {
-                      input = JSON.parse(tc.function.arguments);
-                    } catch (e) {}
-                    return {
-                      type: 'tool_use',
-                      id: tc.id,
-                      name: tc.function.name,
-                      input: input
-                    };
-                  })
-                ]
-              };
-            }
-            return { role: m.role, content: m.content };
-          });
-
-          const payload: any = {
-            model: this.model,
-            max_tokens: 4096,
-            system: systemMsg,
-            messages: chatMsgs
-          };
-
-          if (useMcp && tools.length > 0) {
-            payload.tools = tools.map(t => ({
-              name: t.name,
-              description: t.description,
-              input_schema: t.inputSchema
-            }));
-          }
-
-          response = await aiFetch({
-            url: this.getBaseUrl(),
-            method: 'POST',
-            data: payload,
-            headers: {
-              'x-api-key': this.apiKey,
-              'anthropic-version': '2023-06-01',
-              'Content-Type': 'application/json'
-            }
-          });
-
-          const anthropicMsg = response.data;
-          const content = anthropicMsg.content.find((c: any) => c.type === 'text')?.text || '';
-          const toolUses = anthropicMsg.content.filter((c: any) => c.type === 'tool_use');
-
-          const assistantMsg: ChatMessage = { role: 'assistant', content };
-          if (useMcp && toolUses.length > 0) {
-            assistantMsg.tool_calls = toolUses.map((tu: any) => ({
-              id: tu.id,
-              type: 'function',
-              function: {
-                name: tu.name,
-                arguments: JSON.stringify(tu.input)
-              }
-            }));
-          }
-
-          currentHistory.push(assistantMsg);
-          onUpdate([...currentHistory]);
-
-          if (useMcp && toolUses.length > 0) {
-            for (const tu of toolUses) {
-              const result = await this.client.callTool({
-                name: tu.name,
-                arguments: { ...tu.input, __sessionId: this.sessionId }
-              });
-              currentHistory.push({
-                role: 'tool',
-                tool_call_id: tu.id,
-                name: tu.name,
-                content: JSON.stringify(result.content)
-              });
-              onUpdate([...currentHistory]);
-            }
-            continue;
-          }
+          // Always trigger immediately on structural changes (e.g. turn_end, agent_end)
+          clearTimeout(pendingUpdateTimeout);
+          triggerUpdate();
         }
-
-        isRunning = false;
-      } catch (error: any) {
-        const errMsg = error.message;
-        currentHistory.push({ role: 'assistant', content: `Error: ${errMsg}` });
-        onUpdate([...currentHistory]);
-        isRunning = false;
       }
+    });
+
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        console.log('Agent prompt ABORTED');
+        agent.abort();
+      });
     }
-    
-    this.history = [...currentHistory];
+    console.log('Calling agent.prompt...');
+    await agent.prompt(userMessage);
+    console.log('--- runAgentLoop DONE ---');
+  } catch (err) {
+    console.error('--- runAgentLoop FATAL ERROR ---', err);
+    throw err;
   }
 }

@@ -3,21 +3,21 @@ import Editor from '@monaco-editor/react';
 import { useStore } from '../../store';
 import { Play } from 'lucide-react';
 
+import { compileAndRun } from '../../agent/tools/compile_and_run';
+
 interface EditorPanelProps {
   showHeader?: boolean;
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
-  const { getActiveSession, updateActiveSession } = useStore();
+  const { getActiveSession, updateActiveSession, activeSessionId } = useStore();
   const session = getActiveSession();
 
   const handleCompile = async () => {
-    const client = (window as any).mcpClient;
-    if (client) {
-      await client.callTool({
-        name: "compile_and_run",
-        arguments: {}
-      });
+    try {
+      await compileAndRun.execute('manual-compile', { __sessionId: activeSessionId });
+    } catch (e) {
+      console.error("Manual compile failed:", e);
     }
   };
 
@@ -61,7 +61,16 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
             automaticLayout: true,
             scrollBeyondLastLine: false,
             fixedOverflowWidgets: true,
-            padding: { top: 10, bottom: 10 }
+            padding: { top: 10, bottom: 10 },
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10,
+              useShadows: false,
+              verticalHasArrows: false,
+              horizontalHasArrows: false,
+            }
           }}
         />
       </div>

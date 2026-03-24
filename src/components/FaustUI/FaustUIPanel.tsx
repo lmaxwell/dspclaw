@@ -8,20 +8,30 @@ const FaustUIPanel: React.FC = () => {
   const session = getActiveSession();
   const [values, setValues] = useState<Record<string, number>>({});
 
+  // Synchronize internal values state when session or layout changes
   useEffect(() => {
     if (!session) return;
-    const initialValues: Record<string, number> = {};
-    const walk = (items: any[]) => {
-      for (const item of items) {
-        if (item.items) {
-          walk(item.items);
-        } else if (item.address) {
-          initialValues[item.address] = item.init;
+    setValues(prev => {
+      const newValues: Record<string, number> = { ...prev };
+      let changed = false;
+      
+      const walk = (items: any[]) => {
+        for (const item of items) {
+          if (item.items) {
+            walk(item.items);
+          } else if (item.address) {
+            // Only set if not already present or if it's a new session
+            if (newValues[item.address] === undefined) {
+              newValues[item.address] = item.init;
+              changed = true;
+            }
+          }
         }
-      }
-    };
-    walk(session.uiLayout);
-    setValues(initialValues);
+      };
+      
+      walk(session.uiLayout);
+      return changed ? newValues : prev;
+    });
   }, [session?.uiLayout, session?.id]);
 
   const handleParamChange = (address: string, value: number) => {

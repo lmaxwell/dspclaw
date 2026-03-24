@@ -1,8 +1,3 @@
-export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system' | 'tool';
-  content: string;
-  reasoning_content?: string;
-  tool_call_id?: string;
-  name?: string;
-  tool_calls?: any[];
-}
+import type { AgentMessage } from "@mariozechner/pi-agent-core";
+
+export type ChatMessage = AgentMessage | { role: 'system'; content: string };
