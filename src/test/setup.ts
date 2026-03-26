@@ -13,9 +13,8 @@ class AudioContextMock {
 
 // Mock Global Objects
 beforeAll(() => {
-  (global as any).AudioContext = AudioContextMock;
-  (global as any).webkitAudioContext = AudioContextMock;
-  
+  (globalThis as any).AudioContext = AudioContextMock;
+  (globalThis as any).webkitAudioContext = AudioContextMock;
   // Mock window properties
   Object.defineProperty(window, 'matchMedia', {
     writable: true,

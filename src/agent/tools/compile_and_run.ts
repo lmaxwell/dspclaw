@@ -1,18 +1,14 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { tool } from "ai";
+import { z } from "zod";
 import { useStore } from "../../store";
 import { handleCompile } from "./utils";
 
-export const compileAndRun: AgentTool = {
-  name: "compile_and_run",
-  label: "Compile and Run",
+export const compileAndRun = tool({
   description: "Compile the active session's code and update the VST UI.",
-  parameters: {
-    type: "object",
-    properties: {
-      __sessionId: { type: "string", description: "The session ID." },
-    },
-  } as any,
-  execute: async (_toolCallId, { __sessionId }: any) => {
+  inputSchema: z.object({
+    __sessionId: z.string().optional().describe("The session ID."),
+  }),
+  execute: async ({ __sessionId }: { __sessionId?: string }, _context) => {
     const store = useStore.getState();
     const targetSessionId = __sessionId || store.activeSessionId;
     const targetSession = store.sessions.find((s) => s.id === targetSessionId);
@@ -27,4 +23,4 @@ export const compileAndRun: AgentTool = {
       details: { sessionId: targetSessionId, success: !result.isError }
     };
   },
-};
+});

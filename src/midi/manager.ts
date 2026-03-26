@@ -10,7 +10,7 @@ export const initMidi = async () => {
   const isTyping = () => {
     const el = document.activeElement;
     if (!el) return false;
-    const name = el.tagName.toLowerCase();
+    const name = el.tagName?.toLowerCase();
     return name === 'input' || name === 'textarea' || (el as HTMLElement).isContentEditable;
   };
 

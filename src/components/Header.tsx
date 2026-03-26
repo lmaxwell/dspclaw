@@ -17,7 +17,6 @@ const Header: React.FC = () => {
   } = useStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAudioBlocked, setIsAudioBlocked] = useState(false);
   
   // Update state
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'available' | 'downloaded'>('idle');
@@ -42,6 +41,7 @@ const Header: React.FC = () => {
   };
 
   const fetchModels = async () => {
+    console.log(`[DSPCLAW] Fetching models for '${provider}' with key: '${apiKey ? 'sk-...' + apiKey.slice(-4) : 'none'}'`);
     if (!apiKey) {
       setSettings({ models: [] });
       return;
@@ -90,23 +90,42 @@ const Header: React.FC = () => {
     if (apiKey && isSettingsOpen) fetchModels();
   }, [apiKey, provider, isSettingsOpen]);
 
-  // Listen for first click to clear blocked state
+  // SILENT START: Automatically resume audio on the very first user interaction
   useEffect(() => {
-    const handleFirstClick = () => {
-      if (isAudioBlocked) {
-        const audioCtx = getAudioCtx();
-        audioCtx.resume().then(() => {
-          if (audioCtx.state !== 'suspended') {
-            setIsAudioBlocked(false);
-            setAudioRunning(true);
-            if (dspNode) dspNode.connect(audioCtx.destination);
+    if (isAudioRunning) return;
+
+    const handleFirstInteraction = async () => {
+      const audioCtx = getAudioCtx();
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+          console.log("[DSPCLAW] Audio Engine silently initialized via user interaction");
+          
+          if (dspNode) {
+            dspNode.connect(audioCtx.destination);
           }
-        });
+          setAudioRunning(true);
+        } catch (e) {
+          console.error("[DSPCLAW] Failed to silently initialize audio:", e);
+        }
       }
+      
+      // Cleanup: only need to trigger once
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('mousedown', handleFirstInteraction);
     };
-    window.addEventListener('click', handleFirstClick);
-    return () => window.removeEventListener('click', handleFirstClick);
-  }, [isAudioBlocked, getAudioCtx, dspNode, setAudioRunning]);
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
+    window.addEventListener('mousedown', handleFirstInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('mousedown', handleFirstInteraction);
+    };
+  }, [getAudioCtx, dspNode, setAudioRunning, isAudioRunning]);
 
   const handleToggleAudio = async () => {
     const audioCtx = getAudioCtx();
@@ -116,7 +135,6 @@ const Header: React.FC = () => {
         dspNode.connect(audioCtx.destination);
       }
       setAudioRunning(true);
-      setIsAudioBlocked(false);
     } else {
       if (dspNode) {
         dspNode.disconnect();
@@ -127,7 +145,7 @@ const Header: React.FC = () => {
 
   return (
     <header style={{
-      height: '48px',
+      height: '48px', // Smaller header
       backgroundColor: 'var(--bg-header)',
       borderBottom: '1px solid var(--border-main)',
       display: 'flex',
@@ -143,7 +161,7 @@ const Header: React.FC = () => {
       <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Activity size={18} color="var(--accent)" />
-          <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em', color: 'var(--text-main)' }}>
+          <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.05em', color: 'var(--text-main)' }}>
             DSPCLAW
           </span>
         </div>
@@ -177,18 +195,60 @@ const Header: React.FC = () => {
       }}>
         <button
           onClick={handleToggleAudio}
-          className={(!isAudioRunning || isAudioBlocked) ? 'pulse-button' : ''}
           style={{
-            backgroundColor: isAudioRunning ? '#ef4444' : '#3b82f6',
-            color: 'white', border: isAudioBlocked ? '2px solid #fff' : 'none', borderRadius: '4px',
-            padding: '6px 20px', fontSize: '0.75rem', fontWeight: 900,
-            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
-            minWidth: '160px',
-            justifyContent: 'center'
+            position: 'relative',
+            backgroundColor: '#1a1a1e',
+            backgroundImage: 'linear-gradient(180deg, #2d2d33 0%, #1a1a1e 100%)',
+            color: '#fff', 
+            border: '1px solid #000', 
+            borderTop: '1px solid #444',
+            borderRadius: '4px',
+            padding: '6px 20px', // Smaller padding
+            fontSize: '0.85rem', // Smaller font
+            fontWeight: 900,
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            cursor: 'pointer',
+            minWidth: '160px', // Smaller min-width
+            justifyContent: 'center',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+            transition: 'all 0.05s ease',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase'
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(1px)';
+            e.currentTarget.style.backgroundImage = 'linear-gradient(180deg, #1a1a1e 0%, #2d2d33 100%)';
+            e.currentTarget.style.boxShadow = '0 1px 1px rgba(0,0,0,0.5), inset 0 1px 1px rgba(0,0,0,0.2)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.backgroundImage = 'linear-gradient(180deg, #2d2d33 0%, #1a1a1e 100%)';
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)';
           }}
         >
-          {isAudioRunning ? <Square size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-          {isAudioBlocked ? 'CLICK TO ENABLE AUDIO' : isAudioRunning ? 'STOP ENGINE' : 'START ENGINE'}
+          {/* Hardware LED Indicator */}
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: isAudioRunning ? '#3b82f6' : '#222',
+            boxShadow: isAudioRunning 
+              ? `0 0 10px rgba(59, 130, 246, 0.6), inset 0 1px 2px rgba(255,255,255,0.4)` 
+              : 'inset 0 1px 2px rgba(0,0,0,0.8)',
+            border: '1px solid #000'
+          }} />
+
+          <span style={{ 
+            color: isAudioRunning ? '#fff' : '#888',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {isAudioRunning ? <Square size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+            {isAudioRunning ? 'STOP ENGINE' : 'START ENGINE'}
+          </span>
         </button>
       </div>
 
@@ -203,9 +263,9 @@ const Header: React.FC = () => {
         WebkitAppRegion: 'no-drag',
       }}>
         {updateStatus === 'available' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontSize: '0.7rem', fontWeight: 'bold' }}>
-            <DownloadCloud size={14} className="pulse-button" />
-            DOWNLOADING UPDATE...
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontSize: '0.75rem', fontWeight: 'bold' }}>
+            <DownloadCloud size={14} />
+            DOWNLOADING...
           </div>
         )}
         {updateStatus === 'downloaded' && (
@@ -213,11 +273,11 @@ const Header: React.FC = () => {
             onClick={handleInstallUpdate}
             style={{ 
               backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px',
-              padding: '4px 10px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer',
+              padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '4px'
             }}
           >
-            <DownloadCloud size={12} /> RESTART TO UPDATE
+            <DownloadCloud size={12} /> RESTART
           </button>
         )}
         <button onClick={() => setIsSettingsOpen(true)} style={{ background: 'none', color: '#555', border: 'none', cursor: 'pointer' }}><Settings size={18} /></button>
@@ -225,67 +285,67 @@ const Header: React.FC = () => {
 
       {isSettingsOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-          <div style={{ backgroundColor: 'var(--bg-main)', width: '400px', borderRadius: '8px', border: '1px solid var(--border-main)', padding: '24px', position: 'relative' }}>
+          <div style={{ backgroundColor: '#1a1a1e', width: '400px', borderRadius: '10px', border: '1px solid var(--border-main)', padding: '24px', position: 'relative', boxShadow: '0 15px 30px rgba(0,0,0,0.5)' }}>
             <button onClick={() => setIsSettingsOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
-            <h2 style={{ fontSize: '1rem', marginBottom: '20px' }}>Global Settings</h2>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '20px', fontWeight: 800 }}>Global Settings</h2>
             
             {(() => {
               const inputStyle: React.CSSProperties = { 
                 width: '100%', 
-                height: '36px',
-                padding: '0 10px', 
-                backgroundColor: '#222', 
+                height: '40px',
+                padding: '0 12px', 
+                backgroundColor: '#111', 
                 color: 'white', 
-                border: '1px solid #444', 
+                border: '1px solid #333', 
                 borderRadius: '4px', 
                 boxSizing: 'border-box',
-                fontSize: '0.8rem',
+                fontSize: '1rem',
                 outline: 'none',
-                WebkitAppearance: 'none', // For Electron/Chromium consistency
+                WebkitAppearance: 'none',
                 appearance: 'none'
               };
 
               return (
                 <>
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#888', marginBottom: '4px' }}>Provider</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: '#888', marginBottom: '6px', fontWeight: 600 }}>AI PROVIDER</label>
                     <div style={{ position: 'relative' }}>
                       <select 
                         value={provider} 
                         onChange={(e) => setSettings({ provider: e.target.value as AIProvider })} 
-                        style={{ ...inputStyle, cursor: 'pointer', paddingRight: '24px' }}
+                        style={{ ...inputStyle, cursor: 'pointer', paddingRight: '28px' }}
                       >
                         <option value="moonshot">Kimi (Moonshot)</option>
-                        <option value="gemini">Gemini</option>
+                        <option value="gemini">Gemini (Google)</option>
                         <option value="deepseek">DeepSeek</option>
                         <option value="glm">GLM (Zhipu AI)</option>
                       </select>
-                      <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', fontSize: '0.6rem' }}>▼</div>
+                      <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', fontSize: '0.7rem' }}>▼</div>
                     </div>
                   </div>
 
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#888', marginBottom: '4px' }}>Model</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: '#888', marginBottom: '6px', fontWeight: 600 }}>MODEL</label>
                     <div style={{ position: 'relative' }}>
                       <select 
                         value={model} 
                         onChange={(e) => setSettings({ model: e.target.value })} 
-                        style={{ ...inputStyle, cursor: 'pointer', paddingRight: '24px' }}
+                        style={{ ...inputStyle, cursor: 'pointer', paddingRight: '28px' }}
                       >
                         {models.length > 0 ? (
                           models.map(m => (
                             <option key={m} value={m}>{m}</option>
                           ))
                         ) : (
-                          <option value={model}>{model || 'Select a model...'}</option>
+                          <option value={model}>{model || 'Fetching...'}</option>
                         )}
                       </select>
-                      <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', fontSize: '0.6rem' }}>▼</div>
+                      <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#666', fontSize: '0.7rem' }}>▼</div>
                     </div>
                   </div>
 
                   <div style={{ marginBottom: '24px' }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#888', marginBottom: '4px' }}>API Key</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: '#888', marginBottom: '6px', fontWeight: 600 }}>API KEY</label>
                     <input 
                       type="password" 
                       value={apiKey} 
@@ -297,13 +357,11 @@ const Header: React.FC = () => {
               );
             })()}
 
-            <button onClick={() => setIsSettingsOpen(false)} style={{ width: '100%', padding: '10px', backgroundColor: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}>CLOSE</button>
+            <button onClick={() => setIsSettingsOpen(false)} style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', fontSize: '1rem', letterSpacing: '0.05em' }}>CLOSE</button>
           </div>
         </div>
       )}
       <style>{`
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); } 100% { transform: scale(1); } }
-        .pulse-button { animation: pulse 1.5s infinite ease-in-out; }
         .spinner { border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 2px solid #fff; animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>

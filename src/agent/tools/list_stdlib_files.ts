@@ -1,15 +1,11 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { tool } from "ai";
+import { z } from "zod";
 import { listVFSFiles } from "../../faust/compiler";
 
-export const listStdlibFiles: AgentTool = {
-  name: "list_stdlib_files",
-  label: "List Stdlib Files",
+export const listStdlibFiles = tool({
   description: "List available Faust standard library files (.lib).",
-  parameters: {
-    type: "object",
-    properties: {},
-  } as any,
-  execute: async () => {
+  inputSchema: z.object({}),
+  execute: async (_args, _context) => {
     const files = listVFSFiles("/usr/share/faust");
     const libs = files.filter((f) => f.endsWith(".lib")).join(", ");
     return {
@@ -17,4 +13,4 @@ export const listStdlibFiles: AgentTool = {
       details: { count: files.length }
     };
   },
-};
+});

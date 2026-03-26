@@ -1,4 +1,4 @@
-import { FaustCompiler, FaustMonoDspGenerator, FaustPolyDspGenerator, LibFaust, instantiateFaustModuleFromFile } from "@grame/faustwasm";
+import { FaustCompiler, FaustMonoDspGenerator, FaustPolyDspGenerator, LibFaust } from "@grame/faustwasm";
 
 let compiler: FaustCompiler | null = null;
 let libFaust: LibFaust | null = null;
@@ -33,7 +33,7 @@ export const initFaust = async () => {
     
     const module = await createModule({
       wasmBinary,
-      getPreloadedPackage: (name: string, size: number) => {
+      getPreloadedPackage: (name: string, _size: number) => {
         if (name === "libfaust-wasm.data") return dataBinary;
         return new ArrayBuffer(0);
       }

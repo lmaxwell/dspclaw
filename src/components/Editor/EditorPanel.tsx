@@ -15,7 +15,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
 
   const handleCompile = async () => {
     try {
-      await compileAndRun.execute('manual-compile', { __sessionId: activeSessionId });
+      await compileAndRun.execute!({ __sessionId: activeSessionId }, {} as any);
     } catch (e) {
       console.error("Manual compile failed:", e);
     }
@@ -37,7 +37,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
               border: '1px solid #444',
               borderRadius: '4px',
               padding: '2px 8px',
-              fontSize: '0.7rem',
+              fontSize: '0.9rem',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
@@ -57,7 +57,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
           onChange={(value) => updateActiveSession({ code: value || '' })}
           options={{
             minimap: { enabled: false },
-            fontSize: 13,
+            fontSize: 18,
             automaticLayout: true,
             scrollBeyondLastLine: false,
             fixedOverflowWidgets: true,

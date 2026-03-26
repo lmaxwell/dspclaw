@@ -23,7 +23,7 @@ export const initializeApp = async () => {
   try {
     const sessions = useStore.getState().sessions;
     for (const session of sessions) {
-      await compileAndRun.execute('init-compile', { __sessionId: session.id });
+      await compileAndRun.execute!({ __sessionId: session.id }, {} as any);
     }
   } catch (e) {
     console.warn("Initial compilation deferred:", e);

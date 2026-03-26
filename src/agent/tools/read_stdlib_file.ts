@@ -1,22 +1,17 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { tool } from "ai";
+import { z } from "zod";
 import { readVFSFile } from "../../faust/compiler";
 
-export const readStdlibFile: AgentTool = {
-  name: "read_stdlib_file",
-  label: "Read Stdlib File",
+export const readStdlibFile = tool({
   description: "Read the content of a specific standard library file.",
-  parameters: {
-    type: "object",
-    properties: {
-      name: { type: "string", description: "Library name (e.g., 'reverbs.lib')." },
-    },
-    required: ["name"],
-  } as any,
-  execute: async (_toolCallId, { name }: any) => {
+  inputSchema: z.object({
+    name: z.string().describe("Library name (e.g., 'reverbs.lib')."),
+  }),
+  execute: async ({ name }, _context) => {
     const content = readVFSFile(`/usr/share/faust/${name}`);
     return {
       content: [{ type: "text", text: content || "File not found." }],
       details: { name, found: !!content }
     };
   },
-};
+});

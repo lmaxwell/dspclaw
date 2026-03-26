@@ -18,7 +18,7 @@ describe('read_faust_code tool', () => {
       ],
     });
 
-    const result = await readFaustCode.execute('call-1', {});
+    const result = await (readFaustCode as any).execute({ });
     expect(result.content[0]).toEqual({ type: 'text', text: mockCode });
   });
 
@@ -33,7 +33,7 @@ describe('read_faust_code tool', () => {
       ],
     });
 
-    const result = await readFaustCode.execute('call-1', { __sessionId: 'session-2' });
+    const result = await (readFaustCode as any).execute({ __sessionId: 'session-2' });
     expect(result.content[0]).toEqual({ type: 'text', text: mockCode2 });
   });
 
@@ -43,7 +43,7 @@ describe('read_faust_code tool', () => {
       sessions: [],
     });
 
-    await expect(readFaustCode.execute('call-1', { __sessionId: 'non-existent' }))
+    await expect((readFaustCode as any).execute({ __sessionId: 'non-existent' }))
       .rejects.toThrow('Target session non-existent not found.');
   });
 });

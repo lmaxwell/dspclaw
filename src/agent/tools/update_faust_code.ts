@@ -1,20 +1,15 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { tool } from "ai";
+import { z } from "zod";
 import { useStore } from "../../store";
 import { handleCompile } from "./utils";
 
-export const updateFaustCode: AgentTool = {
-  name: "update_faust_code",
-  label: "Update Faust Code",
+export const updateFaustCode = tool({
   description: "Update the active session with new Faust DSP code and compile it.",
-  parameters: {
-    type: "object",
-    properties: {
-      code: { type: "string", description: "The full Faust DSP source code." },
-      __sessionId: { type: "string", description: "The session ID." },
-    },
-    required: ["code"],
-  } as any,
-  execute: async (_toolCallId, { code, __sessionId }: any) => {
+  inputSchema: z.object({
+    code: z.string().describe("The full Faust DSP source code."),
+    __sessionId: z.string().optional().describe("The session ID."),
+  }),
+  execute: async ({ code, __sessionId }, _context) => {
     const store = useStore.getState();
     const targetSessionId = __sessionId || store.activeSessionId;
 
@@ -30,4 +25,4 @@ export const updateFaustCode: AgentTool = {
       details: { sessionId: targetSessionId, success: !result.isError }
     };
   },
-};
+});

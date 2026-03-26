@@ -3,7 +3,6 @@ import {
   FaustMonoDspGenerator,
   FaustPolyDspGenerator,
   LibFaust,
-  instantiateFaustModuleFromFile,
   FaustSvgDiagrams
 } from "@grame/faustwasm";
 
@@ -43,7 +42,7 @@ const initFaust = async () => {
     
     const module = await createModule({
       wasmBinary,
-      getPreloadedPackage: (name: string, size: number) => {
+      getPreloadedPackage: (name: string, _size: number) => {
         if (name === "libfaust-wasm.data") return dataBinary;
         return new ArrayBuffer(0);
       }

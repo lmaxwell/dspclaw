@@ -4,7 +4,7 @@ A professional, industry-level web-based IDE for Faust DSP programming, featurin
 
 ## 🚀 Key Features
 - **Cross-Platform Desktop App:** Now supports Electron for a native desktop experience.
-- **AI Agent:** Autonomously writes, compiles, and surgically modifies Faust code with context-awareness via `pi-agent-core` and `pi-ai`.
+- **AI Agent:** Autonomously writes, compiles, and surgically modifies Faust code with context-awareness via the Vercel AI SDK.
 - **Rich Chat UI:** Modern chat interface with streaming, markdown, and interactive tool-call visualization using `pi-web-ui`.
 - **Industry-Level VST UI:** Photorealistic control surface with radial knobs, LED tracking rings, and hierarchical grouping.
 - **Polyphonic MIDI:** Supports polyphony via MIDI controllers and computer keyboard mappings.
@@ -15,7 +15,7 @@ A professional, industry-level web-based IDE for Faust DSP programming, featurin
 ## 🛠 Tech Stack
 - **Platform:** React + Vite + TypeScript + Electron.
 - **State Management:** Zustand (Single source of truth in `src/store.ts` for code, AudioContext, and nodes).
-- **AI Engine:** `@mariozechner/pi-ai` and `@mariozechner/pi-agent-core`.
+- **AI Engine:** Vercel AI SDK with `@ai-sdk/google` and `@ai-sdk/openai`.
 - **Chat UI:** `@mariozechner/pi-web-ui` via Lit components.
 - **DSP Engine:** `@grame/faustwasm` using `FaustPolyDspGenerator` and `FaustMonoDspGenerator`.
 - **Layout:** `allotment` for resizable sidebars and panes.

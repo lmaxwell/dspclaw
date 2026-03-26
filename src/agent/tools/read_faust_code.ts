@@ -1,17 +1,13 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { tool } from "ai";
+import { z } from "zod";
 import { useStore } from "../../store";
 
-export const readFaustCode: AgentTool = {
-  name: "read_faust_code",
-  label: "Read Faust Code",
+export const readFaustCode = tool({
   description: "Get the current Faust DSP code from the active session.",
-  parameters: {
-    type: "object",
-    properties: {
-      __sessionId: { type: "string", description: "The session ID." },
-    },
-  } as any,
-  execute: async (_toolCallId, { __sessionId }: any) => {
+  inputSchema: z.object({
+    __sessionId: z.string().optional().describe("The session ID."),
+  }),
+  execute: async ({ __sessionId }: { __sessionId?: string }, _context) => {
     const store = useStore.getState();
     const targetSessionId = __sessionId || store.activeSessionId;
     const targetSession = store.sessions.find((s) => s.id === targetSessionId);
@@ -25,4 +21,4 @@ export const readFaustCode: AgentTool = {
       details: { sessionId: targetSessionId }
     };
   },
-};
+});

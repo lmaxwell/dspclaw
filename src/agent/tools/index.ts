@@ -4,10 +4,10 @@ import { compileAndRun } from "./compile_and_run";
 import { listStdlibFiles } from "./list_stdlib_files";
 import { readStdlibFile } from "./read_stdlib_file";
 
-export const tools = [
+export const tools = {
   readFaustCode,
   updateFaustCode,
   compileAndRun,
   listStdlibFiles,
   readStdlibFile,
-];
+};

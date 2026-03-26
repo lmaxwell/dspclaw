@@ -1,3 +1,3 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { UIMessage as Message } from 'ai';
 
-export type ChatMessage = AgentMessage | { role: 'system'; content: string };
+export type ChatMessage = Message;
