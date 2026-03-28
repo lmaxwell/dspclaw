@@ -37,3 +37,11 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+.vscode-upload.json
+
+# Local / Agent configs
+.agents/
+.claude/
+
+# Temporary / Test files
+test-glm-reasoning.html
