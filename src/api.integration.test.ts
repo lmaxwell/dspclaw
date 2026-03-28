@@ -95,6 +95,17 @@ describe('AI API Integration Tests', () => {
       expect(axios).toHaveBeenCalledWith(expect.objectContaining({ url: '/api/moonshot/models' }));
       expect(response.data).toEqual(mockData);
     });
+
+    it('handles fetch errors gracefully in both modes', async () => {
+      // Web failure
+      vi.mocked(axios).mockRejectedValueOnce(new Error('Network Error'));
+      await expect(aiFetch({ url: 'https://api.test.com' }, false)).rejects.toThrow('Network Error');
+
+      // Electron failure
+      const mockInvoke = vi.fn().mockResolvedValue({ error: 'IPC Error' });
+      (window as any).ipcRenderer = { invoke: mockInvoke };
+      await expect(aiFetch({ url: '/api/test' }, true)).rejects.toThrow('IPC Error');
+    });
   });
 
   describe('Agent Factory', () => {

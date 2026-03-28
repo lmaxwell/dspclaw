@@ -1,13 +1,14 @@
 :root {
-  --bg-app: #1a1a1e;
-  --bg-panel: #252529;
-  --bg-header: #2d2d33;
-  --bg-input: #121214;
-  --border-main: #3a3a42;
-  --text-main: #f0f0f5;
-  --text-dim: #a1a1aa;
+  --bg-app: #0a0a0c;
+  --bg-panel: #121214;
+  --bg-header: #1a1a1e;
+  --bg-input: #08080a;
+  --border-main: rgba(255, 255, 255, 0.06);
+  --text-main: #e1e1e6;
+  --text-dim: #88888e;
   --accent: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.4);
+  --accent-soft: rgba(59, 130, 246, 0.1);
+  --accent-glow: rgba(59, 130, 246, 0.2);
   --error: #fb7185;
 }
 
@@ -16,8 +17,9 @@ body {
   padding: 0;
   background-color: var(--bg-app);
   color: var(--text-main);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 .app-container {
@@ -25,13 +27,13 @@ body {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
+  background-color: var(--bg-app);
 }
 
 .main-layout {
   flex: 1;
   position: relative;
   overflow: hidden;
-  background-color: var(--bg-app);
 }
 
 .panel-container {
@@ -41,15 +43,16 @@ body {
   background-color: var(--bg-panel);
   border: 1px solid var(--border-main);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .panel-header {
-  padding: 10px 16px;
+  padding: 0 16px;
   background-color: var(--bg-header);
   border-bottom: 1px solid var(--border-main);
-  font-size: 0.95rem;
+  font-size: 0.75rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--text-dim);
   display: flex;
@@ -62,53 +65,33 @@ body {
   position: relative;
 }
 
-.tab-button {
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  padding: 8px 18px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 4px;
-}
-
-.tab-button.active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.svg-container svg {
-  display: block;
-  max-width: none !important;
-  max-height: none !important;
-}
-
 /* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-app);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-main);
-  border-radius: 5px;
-  border: 2px solid var(--bg-app);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim);
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* For Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-main) var(--bg-app);
+/* Allotment Overrides */
+.sash-module_sash__-No-W {
+  --sash-size: 4px !important;
+  background-color: transparent !important;
+}
+
+.sash-module_sash__-No-W:hover,
+.sash-module_sash__-No-W.sash-module_active__3vgsh {
+  background-color: var(--accent) !important;
+  transition: background-color 0.2s ease;
 }

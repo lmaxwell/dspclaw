@@ -22,8 +22,17 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      autoplayPolicy: 'no-user-gesture-required',
     },
     backgroundColor: '#0a0a0c',
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'win32' ? {
+      titleBarOverlay: {
+        color: '#2d2d33', // Match --bg-header
+        symbolColor: '#ffffff',
+        height: 32
+      }
+    } : {}),
   });
 
   // Test active push message to Renderer-process.

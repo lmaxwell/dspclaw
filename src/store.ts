@@ -219,8 +219,8 @@ export const useStore = create<AppState>((set, get) => {
   }
 
   const initialSessions: Session[] = [
-    { id: 'default-synth', name: 'CLAW Synth', type: 'poly', code: DEFAULT_SYNTH_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } },
-    { id: 'default-effect', name: 'CLAW Effect', type: 'mono', code: DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }
+    { id: 'default-synth', name: 'CLAW Synth', type: 'poly', code: DEFAULT_SYNTH_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 1.0, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } },
+    { id: 'default-effect', name: 'CLAW Effect', type: 'mono', code: DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 1.0, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }
   ];
 
   return {
@@ -266,7 +266,7 @@ export const useStore = create<AppState>((set, get) => {
         defaultModel = config.defaultModel;
       }
 
-      const newSession: Session = { id, name, type, code: type === 'poly' ? DEFAULT_SYNTH_CODE : DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: defaultModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
+      const newSession: Session = { id, name, type, code: type === 'poly' ? DEFAULT_SYNTH_CODE : DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 1.0, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: defaultModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
       set((state) => ({ sessions: [...state.sessions, newSession], activeSessionId: id }));
     },
 

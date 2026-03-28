@@ -245,10 +245,10 @@ const FaustUIPanel: React.FC<FaustUIPanelProps> = ({ onEditorExpand, editorColla
   return (
     <div style={{ height: '100%', position: 'relative' }}>
       <div className="panel-container" style={{ border: 'none', background: '#121214', height: '100%' }}>
-        <div className="panel-header" style={{ borderBottom: '2px solid #000', height: '32px' }}>
+        <div className="panel-header" style={{ borderBottom: '1px solid var(--border-main)', height: '40px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }} />
-            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>UI - {session?.name || 'STANDBY'}</span>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 6px var(--accent)' }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.15em' }}>UI - {session?.name.toUpperCase() || 'STANDBY'}</span>
           </div>
         </div>
         <div className="panel-content" style={{
@@ -315,9 +315,6 @@ const FaustUIPanel: React.FC<FaustUIPanelProps> = ({ onEditorExpand, editorColla
                 fontWeight: 800,
                 letterSpacing: '0.05em',
               }}>EDITOR</span>
-              <span style={{ color: '#666', fontSize: '0.6rem', marginLeft: '8px' }}>
-                展开编辑器
-              </span>
             </>
           ) : (
             <>
@@ -328,9 +325,6 @@ const FaustUIPanel: React.FC<FaustUIPanelProps> = ({ onEditorExpand, editorColla
                 fontWeight: 800,
                 letterSpacing: '0.05em',
               }}>EDITOR</span>
-              <span style={{ color: '#666', fontSize: '0.6rem', marginLeft: '8px' }}>
-                折叠编辑器
-              </span>
             </>
           )}
         </div>

@@ -194,31 +194,32 @@ const SessionPanel: React.FC = () => {
   };
 
   return (
-    <div className="panel-container" style={{ height: '100%', borderRight: '1px solid var(--border-main)', backgroundColor: 'var(--bg-header)' }}>
-      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '40px' }}>
-        <span style={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.1em' }}>SESSIONS</span>
+    <div className="panel-container" style={{ height: '100%', borderRight: '1px solid var(--border-main)', backgroundColor: 'var(--bg-app)' }}>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '40px', boxSizing: 'border-box' }}>
+        <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.15em' }}>SESSIONS</span>
         <button 
           onClick={() => setIsAdding(!isAdding)}
-          style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}
+          style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '4px' }}
+          className="icon-hover"
         >
-          <Plus size={18} />
+          <Plus size={16} />
         </button>
       </div>
 
-      <div className="panel-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="panel-content" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {isAdding && (
-          <div style={{ backgroundColor: '#222', padding: '12px', borderRadius: '6px', border: '1px solid #333', marginBottom: '12px' }}>
-            <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '10px' }}>NEW SESSION TYPE</div>
+          <div style={{ backgroundColor: 'var(--bg-panel)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-main)', marginBottom: '8px' }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '10px', letterSpacing: '0.05em' }}>NEW SESSION TYPE</div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button 
                 onClick={() => handleAddSession('New Synth', 'poly')}
-                style={{ flex: 1, padding: '8px', fontSize: '0.85rem', backgroundColor: '#3b82f6', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: 'var(--accent)', border: 'none', color: 'white', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <Music size={12} /> SYNTH
               </button>
               <button 
                 onClick={() => handleAddSession('New Effect', 'mono')}
-                style={{ flex: 1, padding: '8px', fontSize: '0.85rem', backgroundColor: '#10b981', border: 'none', color: 'white', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#10b981', border: 'none', color: 'white', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <Waves size={12} /> EFFECT
               </button>
@@ -226,141 +227,167 @@ const SessionPanel: React.FC = () => {
           </div>
         )}
 
-        {sessions.map(s => (
-          <div 
-            key={s.id}
-            onClick={() => switchSession(s.id)}
-            onDoubleClick={() => startEditing(s)}
-            style={{
-              padding: '12px',
-              borderRadius: '8px',
-              backgroundColor: s.id === activeSessionId ? '#333' : 'transparent',
-              border: `1px solid ${s.id === activeSessionId ? '#444' : 'transparent'}`,
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                {s.type === 'poly' ? <Music size={14} color="#3b82f6" /> : <Waves size={14} color="#10b981" />}
-                {editingId === s.id ? (
-                  <input
-                    autoFocus
-                    value={editName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onBlur={saveName}
-                    onKeyDown={(e) => e.key === 'Enter' && saveName()}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#111',
-                      border: '1px solid var(--accent)',
-                      color: 'white',
-                      fontSize: '1rem',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      outline: 'none'
-                    }}
-                  />
-                ) : (
-                  <span style={{ fontSize: '1rem', fontWeight: 600, color: s.id === activeSessionId ? 'white' : '#888' }}>{s.name}</span>
+        {sessions.map(s => {
+          const isActive = s.id === activeSessionId;
+          return (
+            <div 
+              key={s.id}
+              onClick={() => switchSession(s.id)}
+              onDoubleClick={() => startEditing(s)}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                backgroundColor: isActive ? 'rgba(255,255,255,0.03)' : 'transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                transition: 'all 0.15s ease',
+                position: 'relative',
+                border: isActive ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.015)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              {isActive && (
+                <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '2px', backgroundColor: 'var(--accent)', borderRadius: '0 2px 2px 0' }} />
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                  <div style={{ opacity: isActive ? 1 : 0.5 }}>
+                    {s.type === 'poly' ? <Music size={14} color="var(--accent)" /> : <Waves size={14} color="#10b981" />}
+                  </div>
+                  {editingId === s.id ? (
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={saveName}
+                      onKeyDown={(e) => e.key === 'Enter' && saveName()}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        flex: 1,
+                        backgroundColor: 'var(--bg-input)',
+                        border: '1px solid var(--accent)',
+                        color: 'white',
+                        fontSize: '0.9rem',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        outline: 'none'
+                      }}
+                    />
+                  ) : (
+                    <span style={{ 
+                      fontSize: '0.9rem', 
+                      fontWeight: isActive ? 700 : 500, 
+                      color: isActive ? 'var(--text-main)' : 'var(--text-dim)',
+                      letterSpacing: '0.01em'
+                    }}>
+                      {s.name}
+                    </span>
+                  )}
+                </div>
+                {sessions.length > 1 && isActive && editingId !== s.id && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', opacity: 0.5, cursor: 'pointer', padding: '4px' }}
+                    className="icon-hover"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 )}
               </div>
-              {sessions.length > 1 && s.id === activeSessionId && editingId !== s.id && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
-                  style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {activeSession && (
-          <div style={{ marginTop: '24px', borderTop: '1px solid #333', paddingTop: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#666' }}>
-              <Settings2 size={14} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em' }}>INPUT ROUTING</span>
+          <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-main)', paddingTop: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--text-dim)', opacity: 0.6 }}>
+              <Settings2 size={12} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.1em' }}>ROUTING</span>
             </div>
 
             {activeSession.type === 'poly' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#555' }}>MIDI SOURCE</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>MIDI SOURCE</span>
                     {lastMidiNote !== null && (
                       <div style={{ 
-                        backgroundColor: '#3b82f6', color: 'white', fontSize: '0.85rem', 
-                        padding: '2px 8px', borderRadius: '4px', fontWeight: 800,
-                        display: 'flex', alignItems: 'center', gap: '4px'
+                        backgroundColor: 'var(--accent-soft)', color: 'var(--accent)', fontSize: '0.7rem', 
+                        padding: '1px 6px', borderRadius: '4px', fontWeight: 800,
+                        display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--accent-glow)'
                       }}>
-                        <Music size={10} /> {lastMidiNote}
+                        <Music size={8} /> {lastMidiNote}
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#1a1a1a', padding: '8px', borderRadius: '6px', border: '1px solid #333' }}>
-                    <Keyboard size={14} color="#3b82f6" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-input)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-main)' }}>
+                    <Keyboard size={14} color="var(--accent)" style={{ opacity: 0.7 }} />
                     <select 
                       value={activeSession.midiInputId}
                       onChange={(e) => updateActiveSession({ midiInputId: e.target.value })}
-                      style={{ flex: 1, background: 'none', border: 'none', color: '#ccc', fontSize: '0.9rem', outline: 'none' }}
+                      style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer', fontWeight: 500 }}
                     >
-                      <option value="none">None</option>
-                      <option value="keyboard">Computer Keyboard</option>
-                      <option value="all">All MIDI Devices</option>
-                      {midiDevices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      <option value="none" style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>None</option>
+                      <option value="keyboard" style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>Computer Keyboard</option>
+                      <option value="all" style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>All MIDI Devices</option>
+                      {midiDevices.map(d => <option key={d.id} value={d.id} style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>{d.name}</option>)}
                     </select>
                   </div>
                 </label>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#555' }}>AUDIO INPUT</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>AUDIO SOURCE</span>
                     <button 
                       onClick={toggleRefAudio}
                       disabled={!isAudioRunning || isRefLoading || !activeSession.dspNode}
                       style={{ 
-                        backgroundColor: isPlayingRef ? '#ef4444' : '#3b82f6', 
-                        border: 'none', color: 'white', borderRadius: '50%', 
+                        backgroundColor: isPlayingRef ? 'rgba(239, 68, 68, 0.1)' : 'var(--accent-soft)', 
+                        border: isPlayingRef ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--accent-glow)', 
+                        color: isPlayingRef ? '#ef4444' : 'var(--accent)', 
+                        borderRadius: '50%', 
                         width: '24px', height: '24px', display: 'flex',
                         alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', opacity: (!isAudioRunning || isRefLoading || !activeSession.dspNode) ? 0.5 : 1
+                        cursor: 'pointer', opacity: (!isAudioRunning || isRefLoading || !activeSession.dspNode) ? 0.5 : 1,
+                        transition: 'all 0.2s ease'
                       }}
                     >
-                      {isRefLoading ? <div className="spinner" style={{ width: '10px', height: '10px' }} /> : isPlayingRef ? <Pause size={12} fill="white" /> : <Play size={12} fill="white" />}
+                      {isRefLoading ? <div className="spinner" style={{ width: '10px', height: '10px' }} /> : isPlayingRef ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
                     </button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#1a1a1a', padding: '8px', borderRadius: '6px', border: '1px solid #333' }}>
-                    <Disc size={14} color="#10b981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-input)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-main)' }}>
+                    <Disc size={14} color="#10b981" style={{ opacity: 0.7 }} />
                     <select 
                       value={activeSession.audioInputUrl}
                       onChange={(e) => updateActiveSession({ audioInputUrl: e.target.value })}
-                      style={{ flex: 1, background: 'none', border: 'none', color: '#ccc', fontSize: '0.9rem', outline: 'none' }}
+                      style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer', fontWeight: 500 }}
                     >
-                      {availableSamples.map(s => <option key={s.url} value={s.url}>{s.name}</option>)}
+                      {availableSamples.map(s => <option key={s.url} value={s.url} style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>{s.name}</option>)}
                     </select>
                   </div>
                 </label>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <span style={{ fontSize: '0.85rem', color: '#555' }}>VOLUME</span>
-                     <span style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 800 }}>{Math.round(activeSession.audioInputVolume * 100)}%</span>
+                     <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 600 }}>VOLUME</span>
+                     <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>{Math.round(activeSession.audioInputVolume * 100)}%</span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                     <Volume2 size={14} color="#555" />
+                     <Volume2 size={12} color="var(--text-dim)" style={{ opacity: 0.5 }} />
                      <input 
                        type="range" min="0" max="1" step="0.01" 
                        value={activeSession.audioInputVolume}
                        onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                       style={{ flex: 1, height: '4px', cursor: 'pointer', accentColor: 'var(--accent)' }} 
+                       style={{ flex: 1, height: '3px', cursor: 'pointer', accentColor: 'var(--accent)' }} 
                      />
                    </div>
                 </div>
@@ -369,6 +396,11 @@ const SessionPanel: React.FC = () => {
           </div>
         )}
       </div>
+      <style>{`
+        .icon-hover:hover { background-color: rgba(255,255,255,0.05) !important; color: var(--text-main) !important; }
+        .spinner { border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid currentColor; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 };

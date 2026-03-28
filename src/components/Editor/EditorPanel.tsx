@@ -27,25 +27,28 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
   return (
     <div className="panel-container" style={{ height: '100%' }}>
       {showHeader && (
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>EDITOR - {session.name}</span>
+        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '40px', boxSizing: 'border-box' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.15em' }}>EDITOR - {session.name.toUpperCase()}</span>
           <button 
             onClick={handleCompile}
             disabled={session.isCompiling}
             style={{
-              backgroundColor: session.isCompiling ? '#222' : '#333',
-              color: session.isCompiling ? '#555' : '#888',
-              border: '1px solid #444',
-              borderRadius: '4px',
-              padding: '2px 8px',
-              fontSize: '0.9rem',
+              backgroundColor: session.isCompiling ? 'transparent' : 'var(--accent-soft)',
+              border: session.isCompiling ? '1px solid var(--border-main)' : '1px solid var(--accent-glow)',
+              color: session.isCompiling ? 'var(--text-dim)' : 'var(--accent)',
+              padding: '4px 12px',
+              borderRadius: '15px',
+              fontSize: '0.7rem',
+              fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              cursor: session.isCompiling ? 'not-allowed' : 'pointer'
+              gap: '6px',
+              cursor: session.isCompiling ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              letterSpacing: '0.05em'
             }}
           >
-            <Play size={10} /> {session.isCompiling ? 'COMPILING...' : 'COMPILE'}
+            <Play size={10} fill="currentColor" /> {session.isCompiling ? 'COMPILING...' : 'RUN'}
           </button>
         </div>
       )}
