@@ -1,10 +1,13 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createMoonshotAI } from '@ai-sdk/moonshotai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
+import { createZhipu } from 'zhipu-ai-provider';
 import { ToolLoopAgent } from 'ai';
 import { useStore } from '../store';
 import { tools as baseTools } from './tools/index';
-import { agentCache } from './agent-cache';
+import { agentCache, cleanupSessionCache } from './agent-cache';
+import { PROVIDERS, getProviderConfig } from '../config';
 
 /**
  * Maps our store providers to Vercel AI SDK providers and returns a model instance.
@@ -13,47 +16,60 @@ function getModel(provider: string, apiKey: string, modelId: string) {
   const keyPrefix = apiKey ? apiKey.slice(0, 4) : 'none';
   const keySuffix = apiKey ? apiKey.slice(-4) : 'none';
   console.log(`[DSPCLAW] Creating provider '${provider}' for model '${modelId}' with key: '${apiKey ? keyPrefix + '...' + keySuffix : 'none'}'`);
-  
+
   if (provider === 'gemini') {
     const google = createGoogleGenerativeAI({
       apiKey,
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta',
+      baseURL: PROVIDERS.gemini.apiBase,
       headers: {
         'x-goog-api-key': apiKey
       }
     });
-    return google(modelId, {
-      thinkingConfig: {
-        includeThoughts: true,
-        thinkingBudget: 1024,
-      }
-    });
+    // Thinking models work by default; thinkingConfig can be passed via providerOptions in streamText
+    return google(modelId);
   }
 
   if (provider === 'moonshot') {
     const moonshot = createMoonshotAI({
       apiKey,
-      baseURL: 'https://api.moonshot.cn/v1',
+      baseURL: PROVIDERS.moonshot.apiBase,
     });
     return moonshot(modelId);
   }
 
-  // OpenAI-compatible providers
-  let baseURL = 'https://api.openai.com/v1';
   if (provider === 'deepseek') {
-    baseURL = 'https://api.deepseek.com/v1';
-  } else if (provider === 'glm') {
-    baseURL = 'https://open.bigmodel.cn/api/paas/v4';
+    const deepseek = createDeepSeek({
+      apiKey,
+    });
+    return deepseek(modelId);
   }
 
+  if (provider === 'glm') {
+    const zhipu = createZhipu({
+      apiKey,
+    });
+    // Check if model supports thinking (GLM-4.5+)
+    const isThinkingModel = modelId.includes('4.5') || modelId.includes('4.6') || modelId.includes('4.7') || modelId.includes('5');
+    if (isThinkingModel) {
+      return zhipu(modelId, {
+        thinking: {
+          type: 'enabled',
+        },
+      });
+    }
+    return zhipu(modelId);
+  }
+
+  // OpenAI-compatible providers (custom providers)
   const openai = createOpenAI({
     apiKey,
-    baseURL,
+    baseURL: 'https://api.openai.com/v1',
     headers: {
       'Authorization': `Bearer ${apiKey}`
     }
   });
-  return openai(modelId);
+  // Use .chat() for standard /chat/completions endpoint
+  return openai.chat(modelId);
 }
 
 /**
@@ -72,23 +88,21 @@ export function getOrCreateAgent(sessionId: string) {
     return agentCache.get(cacheKey)!;
   }
 
+  // Clean up stale entries for this session before creating new agent
+  cleanupSessionCache(sessionId, cacheKey);
+
   console.log(`[DSPCLAW] Creating NEW agent instance for session: ${sessionId} using model: ${session.model}`);
 
   // Provide a safe default model if none is set in session
   let modelId = session.model;
   if (!modelId) {
-    switch (store.provider) {
-      case 'gemini': modelId = 'gemini-1.5-flash-latest'; break;
-      case 'moonshot': modelId = 'moonshot-v1-8k'; break;
-      case 'deepseek': modelId = 'deepseek-chat'; break;
-      case 'glm': modelId = 'glm-4'; break;
-      default: modelId = 'gpt-4o';
-    }
+    const config = getProviderConfig(store.provider);
+    modelId = config.defaultModel;
   }
 
   const model = getModel(store.provider, store.apiKeys[store.provider], modelId);
 
-  const systemPrompt = `You are CLAW, a world-class Expert Audio DSP Engineer specializing in the Faust Programming Language. 
+  const systemPrompt = `You are CLAW, a world-class Expert Audio DSP Engineer specializing in the Faust Programming Language.
 Your goal is to generate high-performance, sample-rate independent audio code.
 
 **CRITICAL INSTRUCTIONS:**
@@ -109,18 +123,59 @@ Your goal is to generate high-performance, sample-rate independent audio code.
     return acc;
   }, {} as Record<string, any>);
 
+  // Build provider-specific options for reasoning/thinking
+  const providerOpts: Record<string, any> = {};
+
+  if (store.provider === 'gemini') {
+    const isGemini3 = modelId.toLowerCase().includes('gemini-3');
+    const isGemini2_5 = modelId.toLowerCase().includes('gemini-2.5');
+    
+    if (isGemini3 || isGemini2_5) {
+      providerOpts.google = {
+        thinkingConfig: {
+          includeThoughts: true,
+          ...(isGemini3 ? { thinkingLevel: 'high' } : { thinkingBudget: 8192 })
+        },
+      };
+    }
+  } else if (store.provider === 'moonshot') {
+    providerOpts.moonshotai = {
+      thinking: {
+        type: 'enabled',
+        budgetTokens: 1024,
+      },
+    };
+  } else if (store.provider === 'deepseek') {
+    providerOpts.deepseek = {
+      thinking: {
+        type: 'enabled',
+        budgetTokens: 1024,
+      },
+    };
+  } else if (store.provider === 'glm') {
+    providerOpts.zhipu = {
+      thinking: {
+        type: 'enabled',
+      },
+    };
+  }
+
   const agent = new ToolLoopAgent({
     model,
     instructions: systemPrompt,
     tools,
-    providerOptions: {
-      moonshotai: {
-        thinking: {
-          type: 'enabled',
-          budgetTokens: 1024,
-        },
-      },
-    },
+    providerOptions: providerOpts,
+    onStepFinish: (event) => {
+      if (event.usage) {
+        useStore.getState().updateSession(sessionId, { 
+          tokenUsage: {
+            inputTokens: event.usage.inputTokens ?? 0,
+            outputTokens: event.usage.outputTokens ?? 0,
+            totalTokens: event.usage.totalTokens ?? 0
+          }
+        });
+      }
+    }
   });
 
   agentCache.set(cacheKey, agent);

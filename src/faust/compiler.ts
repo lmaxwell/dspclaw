@@ -1,4 +1,5 @@
 import { FaustCompiler, FaustMonoDspGenerator, FaustPolyDspGenerator, LibFaust } from "@grame/faustwasm";
+import { FAUST_CONFIG } from '../config';
 
 let compiler: FaustCompiler | null = null;
 let libFaust: LibFaust | null = null;
@@ -7,7 +8,7 @@ let libFaust: LibFaust | null = null;
 export const initFaust = async () => {
   if (compiler) return { compiler, libFaust };
 
-  const baseUrl = "./faustwasm/";
+  const baseUrl = FAUST_CONFIG.wasmBaseUrl;
   const jsFile = `${baseUrl}libfaust-wasm.js`;
   const dataFile = `${baseUrl}libfaust-wasm.data`;
   const wasmFile = `${baseUrl}libfaust-wasm.wasm`;
@@ -133,11 +134,11 @@ export const compileDSP = async (code: string, audioCtx: AudioContext, type: 'po
       }
 
       node = await generator.createNode(
-        audioCtx, 
-        4, // 4 voices
-        name, 
-        voiceFactory, 
-        mixerModule, 
+        audioCtx,
+        FAUST_CONFIG.polyVoiceCount,
+        name,
+        voiceFactory,
+        mixerModule,
         effectFactory
       );
     } else {

@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import React from 'react';
 import ChatPanel from './ChatPanel';
-import { useStore } from '../../store';
 import * as aiReact from '@ai-sdk/react';
 
 // Mock useStore

@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore } from './store';
+import type { UIMessage } from 'ai';
+
+// Helper to create a simple text message
+function createTextMessage(id: string, role: 'user' | 'assistant', text: string): UIMessage {
+  return {
+    id,
+    role,
+    parts: [{ type: 'text', text }]
+  } as UIMessage;
+}
 
 describe('useStore Session Management', () => {
   beforeEach(() => {
@@ -17,7 +27,7 @@ describe('useStore Session Management', () => {
           midiInputId: 'all',
           isCompiling: false,
           compileError: null,
-          messages: [{ id: 'm1', role: 'user', content: 'Message from session 1' }],
+          messages: [createTextMessage('m1', 'user', 'Message from session 1')],
           isAiThinking: false,
           model: 'model-1',
           models: []
@@ -34,7 +44,7 @@ describe('useStore Session Management', () => {
           midiInputId: 'all',
           isCompiling: false,
           compileError: null,
-          messages: [{ id: 'm2', role: 'user', content: 'Message from session 2' }],
+          messages: [createTextMessage('m2', 'user', 'Message from session 2')],
           isAiThinking: false,
           model: 'model-1',
           models: []
@@ -47,16 +57,26 @@ describe('useStore Session Management', () => {
   it('persists and retrieves messages correctly when switching sessions', () => {
     const store = useStore.getState();
     expect(store.activeSessionId).toBe('session-1');
-    expect(store.sessions.find(s => s.id === 'session-1')?.messages[0].content).toBe('Message from session 1');
+
+    // Get text from the first message's parts
+    const session1Msg = store.sessions.find(s => s.id === 'session-1')?.messages[0];
+    const session1Text = session1Msg?.parts.find(p => p.type === 'text')?.text;
+    expect(session1Text).toBe('Message from session 1');
 
     store.switchSession('session-2');
     const stateAfterSwitch = useStore.getState();
     expect(stateAfterSwitch.activeSessionId).toBe('session-2');
-    expect(stateAfterSwitch.sessions.find(s => s.id === 'session-2')?.messages[0].content).toBe('Message from session 2');
+
+    const session2Msg = stateAfterSwitch.sessions.find(s => s.id === 'session-2')?.messages[0];
+    const session2Text = session2Msg?.parts.find(p => p.type === 'text')?.text;
+    expect(session2Text).toBe('Message from session 2');
 
     store.switchSession('session-1');
     const stateAfterSwitchBack = useStore.getState();
     expect(stateAfterSwitchBack.activeSessionId).toBe('session-1');
-    expect(stateAfterSwitchBack.sessions.find(s => s.id === 'session-1')?.messages[0].content).toBe('Message from session 1');
+
+    const session1MsgAgain = stateAfterSwitchBack.sessions.find(s => s.id === 'session-1')?.messages[0];
+    const session1TextAgain = session1MsgAgain?.parts.find(p => p.type === 'text')?.text;
+    expect(session1TextAgain).toBe('Message from session 1');
   });
 });

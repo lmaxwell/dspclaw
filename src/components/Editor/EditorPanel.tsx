@@ -2,6 +2,7 @@ import React from 'react';
 import Editor from '@monaco-editor/react';
 import { useStore } from '../../store';
 import { Play } from 'lucide-react';
+import { useActiveSession } from '../../hooks/useSession';
 
 import { compileAndRun } from '../../agent/tools/compile_and_run';
 
@@ -10,8 +11,8 @@ interface EditorPanelProps {
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({ showHeader = true }) => {
-  const { getActiveSession, updateActiveSession, activeSessionId } = useStore();
-  const session = getActiveSession();
+  const { updateActiveSession, activeSessionId } = useStore();
+  const session = useActiveSession();
 
   const handleCompile = async () => {
     try {

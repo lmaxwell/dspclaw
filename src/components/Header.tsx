@@ -247,18 +247,18 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header style={{ height: '48px', backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-main)', display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between', zIndex: 100, gap: '12px', WebkitAppRegion: 'drag' } as React.CSSProperties}>
+    <header style={{ height: '48px', backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-main)', display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between', zIndex: 100, gap: '12px' } as React.CSSProperties}>
       <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Activity size={18} color="var(--accent)" />
           <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.05em', color: 'var(--text-main)' }}>DSPCLAW</span>
         </div>
-        <a href="https://github.com/lmaxwell/dspclaw" target="_blank" rel="noopener noreferrer" style={{ color: '#555', display: 'flex', alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <a href="https://github.com/lmaxwell/dspclaw" target="_blank" rel="noopener noreferrer" style={{ color: '#555', display: 'flex', alignItems: 'center' } as React.CSSProperties}>
           <Github size={16} />
         </a>
       </div>
 
-      <div style={{ flex: '2 1 0', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div style={{ flex: '2 1 0', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties}>
         <button onClick={handleToggleAudio} style={{ position: 'relative', backgroundColor: '#1a1a1e', backgroundImage: 'linear-gradient(180deg, #2d2d33 0%, #1a1a1e 100%)', color: '#fff', border: '1px solid #000', borderTop: '1px solid #444', borderRadius: '4px', padding: '6px 20px', fontSize: '0.85rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', minWidth: '160px', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.5)', transition: 'all 0.05s ease', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isAudioRunning ? '#3b82f6' : '#222', boxShadow: isAudioRunning ? `0 0 10px rgba(59, 130, 246, 0.6)` : 'none', border: '1px solid #000' }} />
           <span style={{ color: isAudioRunning ? '#fff' : '#888', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -268,7 +268,7 @@ const Header: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' } as React.CSSProperties}>
         {updateStatus === 'downloaded' && <button onClick={handleInstallUpdate} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}><DownloadCloud size={12} /> RESTART</button>}
         <button onClick={() => setIsSettingsOpen(true)} style={{ background: 'none', color: '#555', border: 'none', cursor: 'pointer' }}><Settings size={18} /></button>
       </div>

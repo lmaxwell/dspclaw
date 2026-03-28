@@ -3,6 +3,7 @@ import type { FaustAudioWorkletNode, FaustScriptProcessorNode } from '@grame/fau
 import { type ChatMessage } from './agent/types';
 import { clearAgentCache } from './agent/agent-cache';
 import { IS_ELECTRON_APP } from './utils/env';
+import { getProviderConfig } from './config';
 
 export type AIProvider = string;
 export type SessionType = 'poly' | 'mono';
@@ -29,6 +30,11 @@ export interface Session {
   isAiThinking: boolean;
   model: string;
   models: string[];
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
 }
 
 interface AppState {
@@ -55,6 +61,7 @@ interface AppState {
 
   // Session Actions
   addSession: (name: string, type: SessionType) => void;
+  setSessionModel: (sessionId: string, model: string) => void;
   switchSession: (id: string) => void;
   deleteSession: (id: string) => void;
   renameSession: (id: string, name: string) => void;
@@ -150,11 +157,23 @@ export const useStore = create<AppState>((set, get) => {
     if (stored) initialCustomProviders = JSON.parse(stored);
   } catch (e) {}
 
+  // Helper to get API key from localStorage or fallback to env vars (dev only)
+  const getApiKeyFromEnv = (provider: AIProvider): string => {
+    const stored = safeLocalStorage.getItem(`faust_api_key_${provider}`);
+    if (stored) return stored;
+    // Only use env vars in development mode (not in production builds)
+    if (import.meta.env.DEV) {
+      const envKey = import.meta.env[`VITE_${provider.toUpperCase()}_API_KEY`];
+      return envKey || '';
+    }
+    return '';
+  };
+
   const initialKeys: Record<AIProvider, string> = {
-    moonshot: safeLocalStorage.getItem('faust_api_key_moonshot') || '',
-    gemini: safeLocalStorage.getItem('faust_api_key_gemini') || '',
-    deepseek: safeLocalStorage.getItem('faust_api_key_deepseek') || '',
-    glm: safeLocalStorage.getItem('faust_api_key_glm') || '',
+    moonshot: getApiKeyFromEnv('moonshot'),
+    gemini: getApiKeyFromEnv('gemini'),
+    deepseek: getApiKeyFromEnv('deepseek'),
+    glm: getApiKeyFromEnv('glm'),
   };
 
   initialCustomProviders.forEach((p: any) => {
@@ -169,12 +188,8 @@ export const useStore = create<AppState>((set, get) => {
     
     // Set decent defaults if key exists but no model saved
     if (!initialModel) {
-      switch(initialProvider) {
-        case 'moonshot': initialModel = 'moonshot-v1-8k'; break;
-        case 'gemini': initialModel = 'gemini-1.5-flash-latest'; break;
-        case 'deepseek': initialModel = 'deepseek-chat'; break;
-        case 'glm': initialModel = 'glm-4'; break;
-      }
+      const config = getProviderConfig(initialProvider);
+      initialModel = config.defaultModel;
     }
   }
 
@@ -204,8 +219,8 @@ export const useStore = create<AppState>((set, get) => {
   }
 
   const initialSessions: Session[] = [
-    { id: 'default-synth', name: 'CLAW Synth', type: 'poly', code: DEFAULT_SYNTH_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [] },
-    { id: 'default-effect', name: 'CLAW Effect', type: 'mono', code: DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [] }
+    { id: 'default-synth', name: 'CLAW Synth', type: 'poly', code: DEFAULT_SYNTH_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } },
+    { id: 'default-effect', name: 'CLAW Effect', type: 'mono', code: DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }
   ];
 
   return {
@@ -242,19 +257,30 @@ export const useStore = create<AppState>((set, get) => {
     addSession: (name, type) => {
       const state = get();
       const id = Math.random().toString(36).substring(7);
-      
+
       // Default model for new session based on current provider
-      let defaultModel = '';
-      switch(state.provider) {
-        case 'moonshot': defaultModel = 'moonshot-v1-8k'; break;
-        case 'gemini': defaultModel = 'gemini-1.5-flash-latest'; break;
-        case 'deepseek': defaultModel = 'deepseek-chat'; break;
-        case 'glm': defaultModel = 'glm-4'; break;
+      // First try to load saved model from localStorage
+      let defaultModel = safeLocalStorage.getItem(`faust_model_${state.provider}`) || '';
+      if (!defaultModel) {
+        const config = getProviderConfig(state.provider);
+        defaultModel = config.defaultModel;
       }
-      
-      const newSession: Session = { id, name, type, code: type === 'poly' ? DEFAULT_SYNTH_CODE : DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: defaultModel, models: [] };
+
+      const newSession: Session = { id, name, type, code: type === 'poly' ? DEFAULT_SYNTH_CODE : DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: defaultModel, models: [], tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
       set((state) => ({ sessions: [...state.sessions, newSession], activeSessionId: id }));
     },
+
+    setSessionModel: (sessionId, model) => set((state) => {
+      // Persist model per provider
+      safeLocalStorage.setItem(`faust_model_${state.provider}`, model);
+      // Clear agent cache so new model takes effect
+      clearAgentCache();
+      return {
+        sessions: state.sessions.map((s) =>
+          s.id === sessionId ? { ...s, model } : s
+        )
+      };
+    }),
 
     switchSession: (id) => {
       const state = get();
@@ -313,7 +339,14 @@ export const useStore = create<AppState>((set, get) => {
 
       let newSessions = current.sessions;
       if (settings.provider && settings.provider !== current.provider) {
-        newSessions = newSessions.map(s => ({ ...s, models: [], model: '' }));
+        // Restore saved model for the new provider, or use default
+        const savedModel = safeLocalStorage.getItem(`faust_model_${settings.provider}`);
+        let newModel = savedModel || '';
+        if (!newModel) {
+          const config = getProviderConfig(settings.provider);
+          newModel = config.defaultModel;
+        }
+        newSessions = newSessions.map(s => ({ ...s, models: [], model: newModel }));
       }
 
       safeLocalStorage.setItem('faust_provider', newProvider);

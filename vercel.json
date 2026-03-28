@@ -19,6 +19,10 @@
     {
       "source": "/api/glm/:path*",
       "destination": "https://open.bigmodel.cn/api/paas/v4/:path*"
+    },
+    {
+      "source": "/api/gemini/:path*",
+      "destination": "https://generativelanguage.googleapis.com/v1beta/:path*"
     }
   ]
 }

@@ -26,7 +26,24 @@ export const initializeApp = async () => {
     console.error("Critical Engine Init Error:", e);
     throw e;
   }
-  
+
+  // Load API keys from .env into store (only if not already set by user, and only in DEV mode)
+  if (import.meta.env.DEV) {
+    const store = useStore.getState();
+    const envKeys: Record<string, string | undefined> = {
+      gemini: import.meta.env.VITE_GEMINI_API_KEY,
+      moonshot: import.meta.env.VITE_KIMI_MOONSHOT_API_KEY,
+      deepseek: import.meta.env.VITE_DEEPSEEK_API_KEY,
+      glm: import.meta.env.VITE_GLM_API_KEY,
+    };
+
+    for (const [provider, key] of Object.entries(envKeys)) {
+      if (key && !store.apiKeys[provider]) {
+        store.setApiKey(provider, key);
+      }
+    }
+  }
+
   // Give it a tiny bit of time for WASM/Midi to settle before first compile
   await new Promise(resolve => setTimeout(resolve, 500));
 

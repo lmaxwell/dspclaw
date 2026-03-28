@@ -9,6 +9,14 @@ import { useChat } from '@ai-sdk/react';
 import { useStore } from '../../store';
 import { getOrCreateAgent } from '../../agent/factory';
 import { aiFetch } from '../../utils/env';
+import { PROVIDERS } from '../../config';
+import { useSession } from '../../hooks/useSession';
+
+const formatTokens = (num: number) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return Math.round(num / 1000) + 'k';
+  return num.toString();
+};
 
 /**
  * Renders a collapsible reasoning/thought block.
@@ -165,8 +173,8 @@ interface ChatPanelProps {
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
-  const { provider, updateSession, customProviders } = useStore();
-  const session = useStore(state => state.sessions.find(s => s.id === sessionId));
+  const { provider, updateSession, setSessionModel, customProviders } = useStore();
+  const session = useSession(sessionId);
   const apiKey = useStore(state => state.apiKeys[state.provider]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -184,10 +192,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
       let headers: any = { 'Authorization': `Bearer ${apiKey}` };
 
       switch (provider) {
-        case 'moonshot': url = 'https://api.moonshot.cn/v1/models'; break;
-        case 'deepseek': url = 'https://api.deepseek.com/v1/models'; break;
-        case 'gemini': url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey; headers = {}; break;
-        case 'glm': url = 'https://open.bigmodel.cn/api/paas/v4/models'; break;
+        case 'moonshot': url = `/api/moonshot${PROVIDERS.moonshot.modelsEndpoint}`; break;
+        case 'deepseek': url = `/api/deepseek${PROVIDERS.deepseek.modelsEndpoint}`; break;
+        case 'gemini':
+          url = `${PROVIDERS.gemini.apiBase}${PROVIDERS.gemini.modelsEndpoint}?key=${apiKey}`;
+          headers = {};
+          break;
+        case 'glm': url = `/api/glm${PROVIDERS.glm.modelsEndpoint}`; break;
       }
 
       if (!url) return;
@@ -336,13 +347,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
           <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>AI ASSISTANT</span>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {session.tokenUsage && session.tokenUsage.inputTokens > 0 && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600, marginRight: '4px', opacity: 0.8 }}>
+              ctx: {formatTokens(session.tokenUsage.inputTokens + session.tokenUsage.outputTokens)}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-input)', borderRadius: '6px', border: '1px solid var(--border-main)', overflow: 'hidden' }}>
             <div style={{ padding: '0 10px', fontSize: '0.75rem', fontWeight: 900, color: 'var(--accent)', borderRight: '1px solid var(--border-main)', height: '28px', display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.03)', whiteSpace: 'nowrap', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {(customProviders.find(p => p.id === provider)?.name || provider).toUpperCase()}
             </div>
-            <select 
-              value={session.model} 
-              onChange={(e) => updateSession(session.id, { model: e.target.value })}
+            <select
+              value={session.model}
+              onChange={(e) => setSessionModel(session.id, e.target.value)}
               style={{ background: 'none', color: 'var(--text-main)', border: 'none', height: '28px', padding: '0 8px', fontSize: '0.8rem', outline: 'none', cursor: 'pointer', maxWidth: '160px' }}
             >
               {session.models.length > 0 ? session.models.map(m => <option key={m} value={m} style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>{m}</option>) : <option value={session.model} style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>{session.model || 'No model'}</option>}

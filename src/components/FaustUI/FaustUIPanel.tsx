@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useStore } from '../../store';
+import { ChevronUp, ChevronDown } from 'lucide-react';
+import { useActiveSession } from '../../hooks/useSession';
 import { Knob } from './Knob';
 import { Menu } from './Menu';
 
-const FaustUIPanel: React.FC = () => {
-  const { getActiveSession } = useStore();
-  const session = getActiveSession();
+interface FaustUIPanelProps {
+  onEditorExpand?: () => void;
+  editorCollapsed?: boolean;
+}
+
+const FaustUIPanel: React.FC<FaustUIPanelProps> = ({ onEditorExpand, editorCollapsed = true }) => {
+  const session = useActiveSession();
   const [values, setValues] = useState<Record<string, number>>({});
 
   // Synchronize internal values state when session or layout changes
@@ -14,7 +19,7 @@ const FaustUIPanel: React.FC = () => {
     setValues(prev => {
       const newValues: Record<string, number> = { ...prev };
       let changed = false;
-      
+
       const walk = (items: any[]) => {
         for (const item of items) {
           if (item.items) {
@@ -28,7 +33,7 @@ const FaustUIPanel: React.FC = () => {
           }
         }
       };
-      
+
       walk(session.uiLayout);
       return changed ? newValues : prev;
     });
@@ -44,7 +49,7 @@ const FaustUIPanel: React.FC = () => {
   const parseMetadata = (item: any) => {
     const label = item.label || '';
     const meta = item.meta || [];
-    
+
     // Helper to find a meta value by key
     const findMeta = (key: string) => {
       const entry = meta.find((m: any) => m[key] !== undefined);
@@ -53,13 +58,13 @@ const FaustUIPanel: React.FC = () => {
 
     const unitMatch = label.match(/\[unit:(.*?)\]/);
     const styleMatch = label.match(/\[style:(.*?)\]/);
-    
+
     const unit = findMeta('unit') || (unitMatch ? unitMatch[1] : '');
     const styleStr = findMeta('style') || (styleMatch ? styleMatch[1] : '');
     const cleanLabel = label.replace(/\[.*?\]/g, '').trim();
-    
+
     let menuOptions: { label: string; value: number }[] | null = null;
-    
+
     if (styleStr && styleStr.startsWith('menu')) {
       const optionsMatch = styleStr.match(/menu\{(.*?)\}/);
       if (optionsMatch) {
@@ -140,16 +145,16 @@ const FaustUIPanel: React.FC = () => {
     const currentValue = values[item.address] ?? item.init;
     const isCheck = item.type === 'checkbox';
     const isButton = item.type === 'button';
-    
+
     // Check if it's a menu
     if (menuOptions) {
       return (
-        <Menu 
+        <Menu
           key={item.address}
           label={cleanLabel}
           value={currentValue}
           options={menuOptions}
-          onChange={(val) => handleParamChange(item.address, val)}
+          onChange={(val: number) => handleParamChange(item.address, val)}
         />
       );
     }
@@ -159,24 +164,24 @@ const FaustUIPanel: React.FC = () => {
     if (isKnob) {
       return (
         <div key={item.address} style={{ flex: '0 0 auto' }}>
-          <Knob 
+          <Knob
             label={cleanLabel}
             value={currentValue}
             min={item.min}
             max={item.max}
             step={item.step}
             unit={unit}
-            onChange={(val) => handleParamChange(item.address, val)}
+            onChange={(val: number) => handleParamChange(item.address, val)}
           />
         </div>
       );
     }
 
     return (
-      <div key={item.address} style={{ 
-        display: 'flex', 
+      <div key={item.address} style={{
+        display: 'flex',
         alignItems: 'center',
-        gap: '8px', 
+        gap: '8px',
         backgroundColor: '#0a0a0c',
         padding: '8px 12px',
         borderRadius: '4px',
@@ -190,21 +195,21 @@ const FaustUIPanel: React.FC = () => {
           {cleanLabel}
         </span>
         {isCheck ? (
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             checked={currentValue === 1}
             onChange={(e) => handleParamChange(item.address, e.target.checked ? 1 : 0)}
             style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
           />
         ) : isButton ? (
-          <button 
+          <button
             onMouseDown={() => handleParamChange(item.address, 1)}
             onMouseUp={() => handleParamChange(item.address, 0)}
             onMouseLeave={() => handleParamChange(item.address, 0)}
-            style={{ 
-              padding: '6px 12px', 
-              fontSize: '0.6rem', 
-              backgroundColor: currentValue === 1 ? 'var(--accent)' : '#333338', 
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.6rem',
+              backgroundColor: currentValue === 1 ? 'var(--accent)' : '#333338',
               border: '1px solid #444',
               color: '#fff',
               borderRadius: '2px',
@@ -221,9 +226,9 @@ const FaustUIPanel: React.FC = () => {
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-            <input 
-              type="range" 
-              min={item.min} max={item.max} step={item.step} 
+            <input
+              type="range"
+              min={item.min} max={item.max} step={item.step}
               value={currentValue}
               onChange={(e) => handleParamChange(item.address, parseFloat(e.target.value))}
               style={{ flex: 1, accentColor: 'var(--accent)', cursor: 'pointer' }}
@@ -238,40 +243,98 @@ const FaustUIPanel: React.FC = () => {
   };
 
   return (
-    <div className="panel-container" style={{ border: 'none', background: '#121214' }}>
-      <div className="panel-header" style={{ borderBottom: '2px solid #000', height: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }} />
-          <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>UI - {session?.name || 'STANDBY'}</span>
+    <div style={{ height: '100%', position: 'relative' }}>
+      <div className="panel-container" style={{ border: 'none', background: '#121214', height: '100%' }}>
+        <div className="panel-header" style={{ borderBottom: '2px solid #000', height: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>UI - {session?.name || 'STANDBY'}</span>
+          </div>
+        </div>
+        <div className="panel-content" style={{
+          padding: '16px',
+          background: 'radial-gradient(circle at center, #252529 0%, #121214 100%)',
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignContent: 'flex-start',
+          justifyContent: 'center',
+          gap: '12px',
+          overflowY: 'auto'
+        }}>
+          {session?.uiLayout && session.uiLayout.length > 0 ? (
+            session.uiLayout.map(renderItem)
+          ) : (
+            <div style={{
+              color: '#333',
+              textAlign: 'center',
+              width: '100%',
+              marginTop: '80px',
+              fontSize: '0.7rem',
+              letterSpacing: '0.3em',
+              fontWeight: 900
+            }}>
+              SYSTEM STANDBY
+            </div>
+          )}
         </div>
       </div>
-      <div className="panel-content" style={{ 
-        padding: '16px', 
-        background: 'radial-gradient(circle at center, #252529 0%, #121214 100%)',
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        alignContent: 'flex-start',
-        justifyContent: 'center',
-        gap: '12px',
-        overflowY: 'auto'
-      }}>
-        {session?.uiLayout && session.uiLayout.length > 0 ? (
-          session.uiLayout.map(renderItem)
-        ) : (
-          <div style={{ 
-            color: '#333', 
-            textAlign: 'center', 
-            width: '100%', 
-            marginTop: '80px', 
-            fontSize: '0.7rem',
-            letterSpacing: '0.3em',
-            fontWeight: 900
-          }}>
-            SYSTEM STANDBY
-          </div>
-        )}
-      </div>
+
+      {/* Floating expand/collapse button for Editor */}
+      {onEditorExpand && (
+        <div
+          onClick={onEditorExpand}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'var(--bg-header)',
+            borderTop: '1px solid var(--border-main)',
+            boxShadow: '0 -4px 12px rgba(0,0,0,0.4)',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-panel)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-header)';
+          }}
+        >
+          {editorCollapsed ? (
+            <>
+              <ChevronUp size={14} />
+              <span style={{
+                marginLeft: '8px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                letterSpacing: '0.05em',
+              }}>EDITOR</span>
+              <span style={{ color: '#666', fontSize: '0.6rem', marginLeft: '8px' }}>
+                展开编辑器
+              </span>
+            </>
+          ) : (
+            <>
+              <ChevronDown size={14} />
+              <span style={{
+                marginLeft: '8px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                letterSpacing: '0.05em',
+              }}>EDITOR</span>
+              <span style={{ color: '#666', fontSize: '0.6rem', marginLeft: '8px' }}>
+                折叠编辑器
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

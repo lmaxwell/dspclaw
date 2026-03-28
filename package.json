@@ -46,6 +46,7 @@
     }
   },
   "dependencies": {
+    "@ai-sdk/deepseek": "^2.0.26",
     "@ai-sdk/google": "^3.0.53",
     "@ai-sdk/moonshotai": "^2.0.12",
     "@ai-sdk/openai": "^3.0.48",
@@ -62,6 +63,7 @@
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.1",
+    "zhipu-ai-provider": "^0.2.2",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },

@@ -74,6 +74,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
+      'axios',
       'react-markdown',
       'remark-gfm',
       'react-syntax-highlighter',
@@ -109,17 +110,10 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/glm/, ''),
       },
       '/api/gemini': {
-        target: 'https://generativelanguage.googleapis.com/v1beta',
+        target: 'https://generativelanguage.googleapis.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/gemini/, ''),
-        configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
-            const key = req.headers['x-goog-api-key'];
-            if (key) {
-              proxyReq.path += (proxyReq.path.includes('?') ? '&' : '?') + `key=${key}`;
-            }
-          });
-        }
+        rewrite: (path) => path.replace(/^\/api\/gemini/, '/v1beta'),
+        secure: false,
       }
     },
   },

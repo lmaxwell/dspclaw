@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Allotment } from "allotment";
 import "allotment/dist/style.css";
 import Header from './components/Header';
@@ -12,6 +12,10 @@ import './App.css';
 const App: React.FC = () => {
   const sessions = useStore((state) => state.sessions);
   const activeSessionId = useStore((state) => state.activeSessionId);
+  const provider = useStore((state) => state.provider);
+  const [editorCollapsed, setEditorCollapsed] = useState(true);
+
+  const handleEditorExpand = () => setEditorCollapsed(!editorCollapsed);
 
   return (
     <div className="app-container">
@@ -27,28 +31,29 @@ const App: React.FC = () => {
           <Allotment.Pane minSize={400}>
             <Allotment vertical>
               <Allotment.Pane preferredSize="50%" minSize={200}>
-                <FaustUIPanel />
+                <FaustUIPanel onEditorExpand={handleEditorExpand} editorCollapsed={editorCollapsed} />
               </Allotment.Pane>
-              
-              <Allotment.Pane preferredSize="50%" minSize={200}>
+
+              <Allotment.Pane preferredSize="50%" minSize={200} visible={!editorCollapsed}>
                 <EditorPanel showHeader={true} />
               </Allotment.Pane>
             </Allotment>
           </Allotment.Pane>
-          
+
           {/* Right Sidebar: Chat */}
           <Allotment.Pane preferredSize={350} minSize={250}>
             <div style={{ height: '100%', width: '100%', position: 'relative' }}>
               {sessions.map((session) => (
-                <div 
-                  key={session.id} 
-                  style={{ 
+                <div
+                  key={session.id}
+                  style={{
                     display: session.id === activeSessionId ? 'block' : 'none',
                     height: '100%',
                     width: '100%'
                   }}
                 >
-                  <ChatPanel sessionId={session.id} />
+                  {/* Add key prop to force remount when provider changes */}
+                  <ChatPanel key={`${session.id}-${provider}`} sessionId={session.id} />
                 </div>
               ))}
             </div>
