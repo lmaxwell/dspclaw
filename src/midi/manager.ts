@@ -11,11 +11,13 @@ export const initMidi = async () => {
     const el = document.activeElement;
     if (!el) return false;
     const name = el.tagName?.toLowerCase();
+    if (!name) return false;
     return name === 'input' || name === 'textarea' || (el as HTMLElement).isContentEditable;
   };
 
   // 1. Setup Computer Keyboard MIDI
   window.addEventListener('keydown', (e) => {
+    if (!e.key) return;
     if (e.repeat || isTyping()) return;
     const note = KEY_TO_NOTE[e.key.toLowerCase()];
     if (note !== undefined) {
@@ -31,6 +33,7 @@ export const initMidi = async () => {
   });
 
   window.addEventListener('keyup', (e) => {
+    if (!e.key) return;
     if (isTyping() && !activeKeys.has(e.key.toLowerCase())) return;
     const note = KEY_TO_NOTE[e.key.toLowerCase()];
     if (note !== undefined) {

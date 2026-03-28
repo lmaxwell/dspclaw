@@ -1,33 +1,200 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useStore, type AIProvider } from '../store';
-import { Play, Square, Activity, Settings, X, DownloadCloud, Github } from 'lucide-react';
-import { aiFetch, isElectron } from '../utils/env';
+import React, { useState, useEffect } from 'react';
+import { useStore } from '../store';
+import { Play, Square, Activity, Settings, X, DownloadCloud, Github, Plus, Trash2, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { aiFetch, IS_ELECTRON_APP } from '../utils/env';
+
+const SettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { provider, apiKeys, setSettings, setApiKey, customProviders, addCustomProvider, removeCustomProvider } = useStore();
+
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customUrl, setCustomUrl] = useState('http://localhost:11434/v1');
+  
+  const [testStatuses, setTestStatuses] = useState<Record<string, 'testing' | 'success' | 'error'>>({});
+
+  const handleAddCustom = () => {
+    if (customName.trim() && customUrl.trim()) {
+      const id = 'custom-' + Math.random().toString(36).substr(2, 9);
+      addCustomProvider({ id, name: customName.trim(), baseUrl: customUrl.trim() });
+      setSettings({ provider: id });
+      setIsAddingCustom(false);
+      setCustomName('');
+    }
+  };
+
+  const handleTestConnection = async (pId: string) => {
+    setTestStatuses(prev => ({ ...prev, [pId]: 'testing' }));
+    try {
+      let url = '';
+      const keyToTest = apiKeys[pId] || '';
+      let headers: any = { 'Authorization': `Bearer ${keyToTest}` };
+
+      if (pId === 'moonshot') url = 'https://api.moonshot.cn/v1/models';
+      else if (pId === 'deepseek') url = 'https://api.deepseek.com/v1/models';
+      else if (pId === 'gemini') { url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + keyToTest; headers = {}; }
+      else if (pId === 'glm') url = 'https://open.bigmodel.cn/api/paas/v4/models';
+      else {
+        // Custom provider
+        const cp = customProviders.find(p => p.id === pId);
+        if (cp) {
+          url = cp.baseUrl.replace(/\/$/, '') + '/models';
+        }
+      }
+
+      if (!url) throw new Error("No URL");
+
+      await aiFetch({ url, method: 'GET', headers });
+      setTestStatuses(prev => ({ ...prev, [pId]: 'success' }));
+      setTimeout(() => setTestStatuses(prev => ({ ...prev, [pId]: 'idle' as any })), 3000);
+    } catch (error) {
+      console.error(error);
+      setTestStatuses(prev => ({ ...prev, [pId]: 'error' }));
+      setTimeout(() => setTestStatuses(prev => ({ ...prev, [pId]: 'idle' as any })), 3000);
+    }
+  };
+
+  const providersList: { id: string; name: string; isCustom?: boolean; baseUrl?: string }[] = [
+    { id: 'moonshot', name: 'Kimi (Moonshot)' },
+    { id: 'gemini', name: 'Gemini (Google)' },
+    { id: 'deepseek', name: 'DeepSeek' },
+    { id: 'glm', name: 'GLM (Zhipu AI)' },
+    ...customProviders.map(p => ({ id: p.id, name: p.name + ' (Custom)', isCustom: true, baseUrl: p.baseUrl }))
+  ];
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+      <div style={{ backgroundColor: '#1a1a1e', width: '560px', borderRadius: '10px', border: '1px solid var(--border-main)', padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
+        <h2 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800 }}>AI Providers</h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {providersList.map(p => {
+            const isSelected = provider === p.id;
+            const status = testStatuses[p.id];
+            const pKey = apiKeys[p.id] || '';
+
+            return (
+              <div 
+                key={p.id}
+                style={{
+                  backgroundColor: isSelected ? '#1c1c21' : '#111',
+                  border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-main)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                    <input 
+                      type="radio" 
+                      name="provider_select" 
+                      checked={isSelected}
+                      onChange={() => setSettings({ provider: p.id })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: isSelected ? 'var(--accent)' : 'var(--text-main)' }}>
+                      {p.name}
+                    </span>
+                  </label>
+                  {p.isCustom && (
+                    <button onClick={() => removeCustomProvider(p.id)} style={{ background: 'none', border: 'none', color: '#fb7185', cursor: 'pointer', padding: '4px' }}>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {p.isCustom && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>Base URL</label>
+                    <input readOnly value={p.baseUrl} style={{ width: '100%', height: '32px', padding: '0 10px', backgroundColor: '#0a0a0c', color: '#888', border: '1px solid #333', borderRadius: '4px', fontSize: '0.85rem', outline: 'none' }} />
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>API Key</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="password" 
+                      name={`faust-api-key-${p.id}`}
+                      autoComplete="new-password"
+                      data-1p-ignore
+                      value={pKey} 
+                      onChange={(e) => setApiKey(p.id, e.target.value)} 
+                      style={{ flex: 1, height: '36px', padding: '0 12px', backgroundColor: '#0a0a0c', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '0.9rem', outline: 'none' }} 
+                    />
+                    <button 
+                      onClick={() => handleTestConnection(p.id)}
+                      disabled={status === 'testing' || !pKey}
+                      style={{ 
+                        height: '36px', padding: '0 16px', 
+                        backgroundColor: status === 'success' ? '#10b981' : status === 'error' ? '#fb7185' : '#333', 
+                        color: 'white', border: '1px solid #444', borderRadius: '4px', 
+                        fontSize: '0.8rem', fontWeight: 700, cursor: pKey ? 'pointer' : 'not-allowed',
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        transition: 'all 0.2s',
+                        opacity: pKey ? 1 : 0.5
+                      }}
+                    >
+                      {status === 'testing' ? <Loader2 size={14} className="animate-spin" /> : 
+                       status === 'success' ? <Check size={14} /> :
+                       status === 'error' ? <AlertCircle size={14} /> : 'Test'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {!isAddingCustom ? (
+          <button 
+            onClick={() => setIsAddingCustom(true)} 
+            style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', color: 'var(--accent)', border: '1px dashed var(--accent)', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <Plus size={16} /> ADD CUSTOM PROVIDER
+          </button>
+        ) : (
+          <div style={{ backgroundColor: '#111', border: '1px solid var(--border-main)', padding: '16px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>NEW CUSTOM PROVIDER</div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>Name</label>
+              <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Local Ollama" style={{ width: '100%', height: '32px', padding: '0 8px', backgroundColor: '#000', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '0.9rem', outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#888', marginBottom: '4px' }}>Base URL (OpenAI Compatible)</label>
+              <input value={customUrl} onChange={e => setCustomUrl(e.target.value)} placeholder="http://localhost:11434/v1" style={{ width: '100%', height: '32px', padding: '0 8px', backgroundColor: '#000', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '0.9rem', outline: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+              <button onClick={() => setIsAddingCustom(false)} style={{ padding: '6px 12px', background: 'none', border: 'none', color: '#888', fontSize: '0.8rem', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleAddCustom} style={{ padding: '6px 12px', backgroundColor: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Save</button>
+            </div>
+          </div>
+        )}
+
+        <button onClick={onClose} style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', fontSize: '1rem', marginTop: '8px' }}>DONE</button>
+      </div>
+    </div>
+  );
+};
 
 const Header: React.FC = () => {
   const { 
     isAudioRunning, 
     setAudioRunning, 
     getAudioCtx,
-    provider,
-    apiKeys,
-    model,
-    models,
-    setSettings,
     getActiveSession,
   } = useStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'available' | 'downloaded'>('idle');
   
-  // Track the provider for the active fetch to prevent race conditions
-  const currentFetchProviderRef = useRef<string | null>(null);
-
   const activeSession = getActiveSession();
   const dspNode = activeSession?.dspNode;
-  const apiKey = apiKeys[provider];
 
   useEffect(() => {
-    if (isElectron) {
+    if (IS_ELECTRON_APP) {
       const ipcRenderer = (window as any).ipcRenderer;
       if (ipcRenderer) {
         ipcRenderer.on('update-available', () => setUpdateStatus('available'));
@@ -37,84 +204,11 @@ const Header: React.FC = () => {
   }, []);
 
   const handleInstallUpdate = () => {
-    if (isElectron) {
+    if (IS_ELECTRON_APP) {
       (window as any).ipcRenderer.send('install-update');
     }
   };
 
-  const fetchModels = async () => {
-    if (!apiKey) {
-      setSettings({ models: [] });
-      return;
-    }
-
-    const fetchProvider = provider;
-    currentFetchProviderRef.current = fetchProvider;
-
-    console.log(`[DSPCLAW] Fetching models for '${fetchProvider}'...`);
-    
-    try {
-      let url = '';
-      let headers: any = { 'Authorization': `Bearer ${apiKey}` };
-
-      switch (fetchProvider) {
-        case 'moonshot': url = 'https://api.moonshot.cn/v1/models'; break;
-        case 'deepseek': url = 'https://api.deepseek.com/v1/models'; break;
-        case 'gemini': url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey; headers = {}; break;
-        case 'glm': url = 'https://open.bigmodel.cn/api/paas/v4/models'; break;
-      }
-
-      if (!url) return;
-
-      const response = await aiFetch({
-        url,
-        method: 'GET',
-        headers
-      });
-      
-      // RACE CONDITION GUARD: Only update if the provider hasn't changed since we started
-      if (currentFetchProviderRef.current !== fetchProvider) {
-        console.warn(`[DSPCLAW] Discarding model results for ${fetchProvider} (stale)`);
-        return;
-      }
-
-      let fetchedModels: string[] = [];
-      if (fetchProvider === 'gemini' && response.data.models) {
-        fetchedModels = response.data.models
-          .filter((m: any) => !m.name.includes('gemma')) // Filter out gemma (no tool support)
-          .map((m: any) => m.name.replace('models/', ''));
-      } else if (response.data && response.data.data) {
-        fetchedModels = response.data.data.map((m: any) => m.id);
-      }
-
-      fetchedModels.sort((a, b) => {
-        const keywords = ['gpt-4', 'sonnet', 'opus', 'v3', 'chat', 'latest', 'reasoner', 'pro', 'flash'];
-        const aScore = keywords.reduce((s, k) => s + (a.toLowerCase().includes(k) ? 1 : 0), 0);
-        const bScore = keywords.reduce((s, k) => s + (b.toLowerCase().includes(k) ? 1 : 0), 0);
-        return bScore - aScore;
-      });
-
-      setSettings({ models: fetchedModels });
-      
-      // If the current model isn't in the fetched list and the list isn't empty, pick the first one
-      if (fetchedModels.length > 0 && !fetchedModels.includes(model)) {
-        setSettings({ model: fetchedModels[0] });
-      }
-    } catch (error: any) {
-      console.error('Failed to fetch models:', error);
-      if (currentFetchProviderRef.current === fetchProvider) {
-        setSettings({ models: [] });
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (apiKey && isSettingsOpen) {
-      fetchModels();
-    }
-  }, [apiKey, provider, isSettingsOpen]);
-
-  // SILENT START logic remains the same...
   useEffect(() => {
     if (isAudioRunning) return;
     const handleFirstInteraction = async () => {
@@ -153,18 +247,18 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header style={{ height: '48px', backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-main)', display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between', zIndex: 100, gap: '12px', WebkitAppRegion: 'drag' as any }}>
+    <header style={{ height: '48px', backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-main)', display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between', zIndex: 100, gap: '12px', WebkitAppRegion: 'drag' } as React.CSSProperties}>
       <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Activity size={18} color="var(--accent)" />
           <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '0.05em', color: 'var(--text-main)' }}>DSPCLAW</span>
         </div>
-        <a href="https://github.com/lmaxwell/dspclaw" target="_blank" rel="noopener noreferrer" style={{ color: '#555', display: 'flex', alignItems: 'center', WebkitAppRegion: 'no-drag' as any }}>
+        <a href="https://github.com/lmaxwell/dspclaw" target="_blank" rel="noopener noreferrer" style={{ color: '#555', display: 'flex', alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <Github size={16} />
         </a>
       </div>
 
-      <div style={{ flex: '2 1 0', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitAppRegion: 'no-drag' as any }}>
+      <div style={{ flex: '2 1 0', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button onClick={handleToggleAudio} style={{ position: 'relative', backgroundColor: '#1a1a1e', backgroundImage: 'linear-gradient(180deg, #2d2d33 0%, #1a1a1e 100%)', color: '#fff', border: '1px solid #000', borderTop: '1px solid #444', borderRadius: '4px', padding: '6px 20px', fontSize: '0.85rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', minWidth: '160px', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.5)', transition: 'all 0.05s ease', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isAudioRunning ? '#3b82f6' : '#222', boxShadow: isAudioRunning ? `0 0 10px rgba(59, 130, 246, 0.6)` : 'none', border: '1px solid #000' }} />
           <span style={{ color: isAudioRunning ? '#fff' : '#888', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -174,43 +268,12 @@ const Header: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', WebkitAppRegion: 'no-drag' as any }}>
+      <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {updateStatus === 'downloaded' && <button onClick={handleInstallUpdate} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}><DownloadCloud size={12} /> RESTART</button>}
         <button onClick={() => setIsSettingsOpen(true)} style={{ background: 'none', color: '#555', border: 'none', cursor: 'pointer' }}><Settings size={18} /></button>
       </div>
 
-      {isSettingsOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-          <div style={{ backgroundColor: '#1a1a1e', width: '400px', borderRadius: '10px', border: '1px solid var(--border-main)', padding: '24px', position: 'relative' }}>
-            <button onClick={() => setIsSettingsOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '20px', fontWeight: 800 }}>Global Settings</h2>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#888', marginBottom: '6px', fontWeight: 600 }}>AI PROVIDER</label>
-              <select value={provider} onChange={(e) => setSettings({ provider: e.target.value as AIProvider })} style={{ width: '100%', height: '40px', padding: '0 12px', backgroundColor: '#111', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '1rem', outline: 'none' }}>
-                <option value="moonshot">Kimi (Moonshot)</option>
-                <option value="gemini">Gemini (Google)</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="glm">GLM (Zhipu AI)</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#888', marginBottom: '6px', fontWeight: 600 }}>MODEL</label>
-              <select value={model} onChange={(e) => setSettings({ model: e.target.value })} style={{ width: '100%', height: '40px', padding: '0 12px', backgroundColor: '#111', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '1rem', outline: 'none' }}>
-                {models.length > 0 ? models.map(m => <option key={m} value={m}>{m}</option>) : <option value={model}>{model || (apiKey ? 'Fetching...' : 'Enter API Key first')}</option>}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#888', marginBottom: '6px', fontWeight: 600 }}>API KEY</label>
-              <input type="password" value={apiKey || ''} onChange={(e) => setSettings({ apiKey: e.target.value })} style={{ width: '100%', height: '40px', padding: '0 12px', backgroundColor: '#111', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '1rem', outline: 'none' }} />
-            </div>
-
-            <button onClick={() => setIsSettingsOpen(false)} style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', fontSize: '1rem' }}>CLOSE</button>
-          </div>
-        </div>
-      )}
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
     </header>
   );
 };

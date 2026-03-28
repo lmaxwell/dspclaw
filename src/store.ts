@@ -1,9 +1,17 @@
 import { create } from 'zustand';
 import type { FaustAudioWorkletNode, FaustScriptProcessorNode } from '@grame/faustwasm';
 import { type ChatMessage } from './agent/types';
+import { clearAgentCache } from './agent/agent-cache';
+import { IS_ELECTRON_APP } from './utils/env';
 
-export type AIProvider = 'moonshot' | 'gemini' | 'deepseek' | 'glm';
+export type AIProvider = string;
 export type SessionType = 'poly' | 'mono';
+
+export interface CustomProvider {
+  id: string;
+  name: string;
+  baseUrl: string;
+}
 
 export interface Session {
   id: string;
@@ -19,6 +27,8 @@ export interface Session {
   compileError: string | null;
   messages: ChatMessage[];
   isAiThinking: boolean;
+  model: string;
+  models: string[];
 }
 
 interface AppState {
@@ -30,10 +40,12 @@ interface AppState {
   // Settings (Global)
   provider: AIProvider;
   apiKeys: Record<AIProvider, string>;
-  model: string;
   customBaseUrl: string;
-  models: string[];
-  setSettings: (settings: { provider?: AIProvider, apiKey?: string, model?: string, customBaseUrl?: string, models?: string[] }) => void | Promise<void>;
+  customProviders: CustomProvider[];
+  setSettings: (settings: { provider?: AIProvider, apiKey?: string, customBaseUrl?: string }) => void | Promise<void>;
+  setApiKey: (providerId: AIProvider, apiKey: string) => Promise<void>;
+  addCustomProvider: (provider: CustomProvider) => void;
+  removeCustomProvider: (id: string) => void;
 
   // MIDI Global State
   midiDevices: { id: string, name: string }[];
@@ -57,8 +69,6 @@ interface AppState {
 }
 
 let globalAudioCtx: AudioContext | null = null;
-
-const isElectron = !!(window as any).ipcRenderer;
 
 const safeLocalStorage = {
   getItem: (key: string): string | null => {
@@ -133,12 +143,23 @@ process = _ <: (lp_out, hp_out) : select2(mode) : *(ba.db2linear(-drive * 0.5));
 
 export const useStore = create<AppState>((set, get) => {
   const initialProvider = (safeLocalStorage.getItem('faust_provider') as AIProvider) || 'moonshot';
+  
+  let initialCustomProviders: CustomProvider[] = [];
+  try {
+    const stored = safeLocalStorage.getItem('faust_custom_providers');
+    if (stored) initialCustomProviders = JSON.parse(stored);
+  } catch (e) {}
+
   const initialKeys: Record<AIProvider, string> = {
     moonshot: safeLocalStorage.getItem('faust_api_key_moonshot') || '',
     gemini: safeLocalStorage.getItem('faust_api_key_gemini') || '',
     deepseek: safeLocalStorage.getItem('faust_api_key_deepseek') || '',
     glm: safeLocalStorage.getItem('faust_api_key_glm') || '',
   };
+
+  initialCustomProviders.forEach((p: any) => {
+    initialKeys[p.id] = safeLocalStorage.getItem(`faust_api_key_${p.id}`) || '';
+  });
 
   // Only load a model if an API key exists for the provider
   let initialModel = '';
@@ -157,9 +178,9 @@ export const useStore = create<AppState>((set, get) => {
     }
   }
 
-  if (isElectron) {
+  if (IS_ELECTRON_APP) {
     (async () => {
-      const providers: AIProvider[] = ['moonshot', 'gemini', 'deepseek', 'glm'];
+      const providers: AIProvider[] = ['moonshot', 'gemini', 'deepseek', 'glm', ...initialCustomProviders.map(p => p.id)];
       const secureKeys = { ...initialKeys };
       let changed = false;
       for (const p of providers) {
@@ -173,20 +194,9 @@ export const useStore = create<AppState>((set, get) => {
         }
       }
       if (changed) {
-        set((state) => {
-          const currentKey = secureKeys[state.provider];
-          const currentSavedModel = safeLocalStorage.getItem(`faust_model_${state.provider}`);
-          let finalModel = state.model;
-          
-          if (!currentKey) {
-            finalModel = '';
-          } else if (!finalModel && currentSavedModel) {
-            finalModel = currentSavedModel;
-          }
-          
+        set(() => {
           return { 
-            apiKeys: secureKeys, 
-            model: finalModel
+            apiKeys: secureKeys
           };
         });
       }
@@ -194,8 +204,8 @@ export const useStore = create<AppState>((set, get) => {
   }
 
   const initialSessions: Session[] = [
-    { id: 'default-synth', name: 'CLAW Synth', type: 'poly', code: DEFAULT_SYNTH_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false },
-    { id: 'default-effect', name: 'CLAW Effect', type: 'mono', code: DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false }
+    { id: 'default-synth', name: 'CLAW Synth', type: 'poly', code: DEFAULT_SYNTH_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [] },
+    { id: 'default-effect', name: 'CLAW Effect', type: 'mono', code: DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: initialModel, models: [] }
   ];
 
   return {
@@ -208,13 +218,41 @@ export const useStore = create<AppState>((set, get) => {
 
     provider: initialProvider,
     apiKeys: initialKeys,
-    model: initialModel,
     customBaseUrl: safeLocalStorage.getItem('faust_custom_base_url') || '',
-    models: [],
+    customProviders: initialCustomProviders,
+
+    addCustomProvider: (provider) => set((state) => {
+      const newProviders = [...state.customProviders, provider];
+      safeLocalStorage.setItem('faust_custom_providers', JSON.stringify(newProviders));
+      return { customProviders: newProviders, apiKeys: { ...state.apiKeys, [provider.id]: '' } };
+    }),
+
+    removeCustomProvider: (id) => set((state) => {
+      const newProviders = state.customProviders.filter(p => p.id !== id);
+      safeLocalStorage.setItem('faust_custom_providers', JSON.stringify(newProviders));
+      
+      let newProvider = state.provider;
+      if (state.provider === id) {
+        newProvider = 'moonshot';
+        safeLocalStorage.setItem('faust_provider', newProvider);
+      }
+      return { customProviders: newProviders, provider: newProvider };
+    }),
 
     addSession: (name, type) => {
+      const state = get();
       const id = Math.random().toString(36).substring(7);
-      const newSession: Session = { id, name, type, code: type === 'poly' ? DEFAULT_SYNTH_CODE : DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false };
+      
+      // Default model for new session based on current provider
+      let defaultModel = '';
+      switch(state.provider) {
+        case 'moonshot': defaultModel = 'moonshot-v1-8k'; break;
+        case 'gemini': defaultModel = 'gemini-1.5-flash-latest'; break;
+        case 'deepseek': defaultModel = 'deepseek-chat'; break;
+        case 'glm': defaultModel = 'glm-4'; break;
+      }
+      
+      const newSession: Session = { id, name, type, code: type === 'poly' ? DEFAULT_SYNTH_CODE : DEFAULT_EFFECT_CODE, uiLayout: [], dspNode: null, audioInputUrl: './audio/stay-a-while.mp3', audioInputVolume: 0.5, midiInputId: 'all', isCompiling: false, compileError: null, messages: [], isAiThinking: false, model: defaultModel, models: [] };
       set((state) => ({ sessions: [...state.sessions, newSession], activeSessionId: id }));
     },
 
@@ -248,9 +286,23 @@ export const useStore = create<AppState>((set, get) => {
       const newProvider = settings.provider || current.provider;
       const newApiKeys = { ...current.apiKeys };
       
+      // Clear agent cache if provider or apiKey changes
+      if (settings.provider || (settings.apiKey !== undefined && settings.apiKey !== current.apiKeys[newProvider])) {
+        clearAgentCache();
+      }
+
       if (settings.apiKey !== undefined) {
+        // Prevent empty string from overwriting a valid key during auto-fill events
+        // unless the user is explicitly deleting it.
+        if (settings.apiKey === '' && current.apiKeys[newProvider] !== '') {
+           // If it's just an empty string and we had a key, it might be an auto-fill clearing event
+           // We only accept explicit clearing if the modal is actually open and focused
+           const isSettingsInput = document.activeElement?.getAttribute('name')?.startsWith('faust-api-key-');
+           if (!isSettingsInput) return; 
+        }
+
         newApiKeys[newProvider] = settings.apiKey;
-        if (isElectron) {
+        if (IS_ELECTRON_APP) {
           const encrypted = await (window as any).ipcRenderer.invoke('safe-storage:encrypt', settings.apiKey);
           safeLocalStorage.setItem(`faust_api_key_secure_${newProvider}`, encrypted);
           safeLocalStorage.removeItem(`faust_api_key_${newProvider}`);
@@ -259,42 +311,38 @@ export const useStore = create<AppState>((set, get) => {
         }
       }
 
-      let newModel = settings.model !== undefined ? settings.model : current.model;
-      let newModels = settings.models || current.models;
-
+      let newSessions = current.sessions;
       if (settings.provider && settings.provider !== current.provider) {
-        newModels = []; 
-        const newApiKey = newApiKeys[newProvider];
-        const savedModel = safeLocalStorage.getItem(`faust_model_${newProvider}`);
-        
-        if (!newApiKey) {
-          newModel = '';
-        } else if (savedModel) {
-          newModel = savedModel;
-        } else {
-          switch(newProvider) {
-            case 'moonshot': newModel = 'moonshot-v1-8k'; break;
-            case 'gemini': newModel = 'gemini-1.5-flash-latest'; break;
-            case 'deepseek': newModel = 'deepseek-chat'; break;
-            case 'glm': newModel = 'glm-4'; break;
-          }
-        }
-      }
-
-      // Final safety check: if no key for the active provider, force clear model
-      if (!newApiKeys[newProvider]) {
-        newModel = '';
-        newModels = [];
+        newSessions = newSessions.map(s => ({ ...s, models: [], model: '' }));
       }
 
       safeLocalStorage.setItem('faust_provider', newProvider);
-      if (newModel) {
-        safeLocalStorage.setItem(`faust_model_${newProvider}`, newModel);
-      } else {
-        safeLocalStorage.removeItem(`faust_model_${newProvider}`);
+      set({ provider: newProvider, apiKeys: newApiKeys, customBaseUrl: settings.customBaseUrl ?? current.customBaseUrl, sessions: newSessions });
+    },
+
+    setApiKey: async (providerId, apiKey) => {
+      const current = get();
+      const newApiKeys = { ...current.apiKeys };
+
+      if (apiKey === '' && current.apiKeys[providerId] !== '') {
+         const isSettingsInput = document.activeElement?.getAttribute('name')?.startsWith('faust-api-key-');
+         if (!isSettingsInput) return; 
       }
 
-      set({ provider: newProvider, apiKeys: newApiKeys, model: newModel, customBaseUrl: settings.customBaseUrl ?? current.customBaseUrl, models: newModels });
+      newApiKeys[providerId] = apiKey;
+      if (IS_ELECTRON_APP) {
+        const encrypted = await (window as any).ipcRenderer.invoke('safe-storage:encrypt', apiKey);
+        safeLocalStorage.setItem(`faust_api_key_secure_${providerId}`, encrypted);
+        safeLocalStorage.removeItem(`faust_api_key_${providerId}`);
+      } else {
+        safeLocalStorage.setItem(`faust_api_key_${providerId}`, apiKey);
+      }
+
+      if (current.provider === providerId) {
+        clearAgentCache();
+      }
+
+      set({ apiKeys: newApiKeys });
     },
 
     setAudioRunning: (running) => set({ isAudioRunning: running }),

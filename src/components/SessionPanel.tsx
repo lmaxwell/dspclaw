@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { Plus, Music, Waves, Trash2, Settings2, Keyboard, Disc, Play, Pause, Volume2 } from 'lucide-react';
 
-import { isElectron } from '../utils/env';
+import { IS_ELECTRON_APP } from '../utils/env';
 import { compileAndRun } from '../agent/tools/compile_and_run';
 
 const SessionPanel: React.FC = () => {
@@ -27,7 +27,7 @@ const SessionPanel: React.FC = () => {
 
   useEffect(() => {
     const loadSamples = async () => {
-      if (isElectron) {
+      if (IS_ELECTRON_APP) {
         try {
           const files = await (window as any).ipcRenderer.invoke('list-audio-files');
           if (files && files.length > 0) {

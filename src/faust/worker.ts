@@ -13,7 +13,10 @@ let svgDiagrams: FaustSvgDiagrams | null = null;
 const initFaust = async () => {
   if (compiler) return { compiler, libFaust, svgDiagrams };
 
-  const baseUrl = `${location.origin}/faustwasm/`;
+  // In Electron/file:// environments, location.origin might be "file://" 
+  // which causes issues when resolving paths like /faustwasm/.
+  // Using a relative path or a more robust resolution.
+  const baseUrl = location.protocol === 'file:' ? './faustwasm/' : `${location.origin}/faustwasm/`;
   const jsFile = `${baseUrl}libfaust-wasm.js`;
   const dataFile = `${baseUrl}libfaust-wasm.data`;
   const wasmFile = `${baseUrl}libfaust-wasm.wasm`;

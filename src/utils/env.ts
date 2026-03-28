@@ -1,7 +1,7 @@
-export const isElectron = !!(window as any).ipcRenderer;
+export const IS_ELECTRON_APP = !!(window as any).ipcRenderer;
 
 export const getApiUrl = (path: string) => {
-  if (!isElectron) return path;
+  if (!IS_ELECTRON_APP) return path;
 
   // Map proxy paths to absolute URLs for Electron production
   if (path.startsWith('/api/openai')) {
@@ -21,7 +21,7 @@ export const getApiUrl = (path: string) => {
 };
 
 export const aiFetch = async (options: { url: string, method?: string, data?: any, headers?: any }) => {
-  if (isElectron) {
+  if (IS_ELECTRON_APP) {
     // Proxy through Main Process to bypass CORS
     const result = await (window as any).ipcRenderer.invoke('ai-request', options);
     if (result.error) throw new Error(result.error);

@@ -3,20 +3,21 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Send, User, Bot, Loader2, Sparkles, Terminal, Copy, Check, ChevronDown, ChevronRight, BrainCircuit } from 'lucide-react';
+import { Send, User, Bot, Loader2, Sparkles, Terminal, Copy, Check, ChevronDown, ChevronRight, BrainCircuit, RefreshCw } from 'lucide-react';
 import { type UIMessage as Message, DirectChatTransport } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { useStore } from '../../store';
 import { getOrCreateAgent } from '../../agent/factory';
+import { aiFetch } from '../../utils/env';
 
 /**
  * Renders a collapsible reasoning/thought block.
  */
-const ThoughtBlock = ({ content }: { content: string }) => {
-  const [isOpen, setIsOpen] = React.useState(true);
+const ThoughtBlock = ({ content }: { content: any }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
   
-  const cleanContent = content.replace(/<think>|<\/think>/g, '').trim();
-  if (!cleanContent) return null;
+  const textContent = typeof content === 'string' ? content : JSON.stringify(content);
+  const cleanContent = textContent.replace(/<think>|<\/think>/g, '').trim();
 
   return (
     <div style={{ margin: '12px 0', borderLeft: '2px solid var(--accent)', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '0 8px 8px 0', overflow: 'hidden' }}>
@@ -27,7 +28,7 @@ const ThoughtBlock = ({ content }: { content: string }) => {
       </button>
       {isOpen && (
         <div style={{ padding: '0 12px 12px 12px', fontSize: '0.95rem', color: 'var(--text-dim)', lineHeight: '1.6', whiteSpace: 'pre-wrap', fontStyle: 'italic', opacity: 0.8 }}>
-          {cleanContent}
+          {cleanContent || 'Thinking...'}
         </div>
       )}
     </div>
@@ -78,26 +79,19 @@ const MemoizedMarkdown = React.memo(({ content, isStreaming, messageIdx, segment
 });
 
 const ChatMessageItem = React.memo(({ msg, idx, isStreaming }: { msg: Message; idx: number; isStreaming: boolean; }) => {
-  const renderParts = () => {
-    if (msg.parts && msg.parts.length > 0) {
-      return msg.parts.map((part: any, pIdx: number) => {
-        if (part.type === 'text') {
-          return <MemoizedMarkdown key={pIdx} content={part.text} isStreaming={isStreaming && pIdx === msg.parts!.length - 1} messageIdx={idx} segmentIdx={pIdx} />;
-        }
-        if (part.type === 'reasoning') {
-          return <ThoughtBlock key={pIdx} content={part.reasoning} />;
-        }
-        if (part.type === 'tool-invocation') {
-          const { state, toolName } = part.toolInvocation;
-          if (state === 'call') {
-            return <div key={pIdx} style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '8px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}><Loader2 size={12} className="animate-spin" />Executing tool: {toolName}...</div>;
-          }
-          if (state === 'result') {
-            return <div key={pIdx} style={{ fontSize: '0.8rem', color: '#10b981', marginBottom: '8px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}><Check size={10} />Used tool: {toolName}</div>;
-          }
-        }
-        return null;
-      });
+  const renderTool = (toolName: string, state: string, key: string | number) => {
+    const isExecuting = ['call', 'partial-call', 'input-available', 'input-streaming'].includes(state);
+    const isDone = ['result', 'output-available'].includes(state);
+
+    if (isExecuting) {
+      if (isStreaming) {
+        return <div key={key} style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '8px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}><Loader2 size={12} className="animate-spin" />Executing tool: {toolName}...</div>;
+      } else {
+        return <div key={key} style={{ fontSize: '0.8rem', color: '#fb7185', marginBottom: '8px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>Stopped tool: {toolName}</div>;
+      }
+    }
+    if (isDone) {
+      return <div key={key} style={{ fontSize: '0.8rem', color: '#10b981', marginBottom: '8px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}><Check size={10} />Used tool: {toolName}</div>;
     }
     return null;
   };
@@ -108,33 +102,146 @@ const ChatMessageItem = React.memo(({ msg, idx, isStreaming }: { msg: Message; i
         {msg.role === 'user' ? <User size={20} color="#fff" /> : <Bot size={20} color="var(--accent)" />}
       </div>
       <div style={{ maxWidth: '85%', backgroundColor: msg.role === 'user' ? 'var(--bg-panel)' : 'transparent', padding: msg.role === 'user' ? '14px 18px' : '0', borderRadius: '12px', border: msg.role === 'user' ? '1px solid var(--border-main)' : 'none', fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-main)' }}>
-        {renderParts()}
+        {/* Iterate through parts (modern format) */}
+        {msg.parts?.map((part: any, pIdx: number) => {
+          if (part.type === 'text') {
+            const text = part.text;
+            if (text.includes('<think>') && text.includes('</think>')) {
+              const regex = /<think>([\s\S]*?)<\/think>/g;
+              const segments = [];
+              let lastIndex = 0;
+              let match;
+              while ((match = regex.exec(text)) !== null) {
+                if (match.index > lastIndex) {
+                  segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+                }
+                segments.push({ type: 'reasoning', content: match[1] });
+                lastIndex = regex.lastIndex;
+              }
+              if (lastIndex < text.length) {
+                segments.push({ type: 'text', content: text.slice(lastIndex) });
+              }
+              
+              return segments.map((seg, sIdx) => 
+                seg.type === 'text' ? (
+                  <MemoizedMarkdown key={`${pIdx}-${sIdx}`} content={seg.content} isStreaming={isStreaming && pIdx === msg.parts!.length - 1 && sIdx === segments.length - 1} messageIdx={idx} segmentIdx={pIdx} />
+                ) : (
+                  <ThoughtBlock key={`${pIdx}-${sIdx}`} content={seg.content} />
+                )
+              );
+            } else if (text.includes('<think>')) {
+              const [before, ...afterParts] = text.split('<think>');
+              return (
+                <React.Fragment key={pIdx}>
+                  {before && <MemoizedMarkdown content={before} isStreaming={false} messageIdx={idx} segmentIdx={pIdx} />}
+                  <ThoughtBlock content={afterParts.join('<think>')} />
+                </React.Fragment>
+              );
+            }
+            return <MemoizedMarkdown key={pIdx} content={text} isStreaming={isStreaming && pIdx === msg.parts!.length - 1} messageIdx={idx} segmentIdx={pIdx} />;
+          }
+          if (part.type === 'reasoning') {
+            return <ThoughtBlock key={pIdx} content={part.text} />;
+          }
+          
+          // Check for tool parts: generic 'tool-invocation' or typed 'tool-{name}'
+          if (part.type === 'tool-invocation') {
+            return renderTool(part.toolInvocation.toolName, part.toolInvocation.state, `part-tool-${pIdx}`);
+          }
+          if (part.type.startsWith('tool-')) {
+            const toolName = part.type.replace('tool-', '');
+            return renderTool(toolName, part.state, `part-tool-${pIdx}`);
+          }
+          
+          return null;
+        })}
       </div>
     </div>
   );
 });
 
-const ChatPanel: React.FC = () => {
-  const { provider, model, updateSession } = useStore();
-  const session = useStore(state => state.sessions.find(s => s.id === state.activeSessionId));
+interface ChatPanelProps {
+  sessionId: string;
+}
+
+const ChatPanel: React.FC<ChatPanelProps> = ({ sessionId }) => {
+  const { provider, updateSession, customProviders } = useStore();
+  const session = useStore(state => state.sessions.find(s => s.id === sessionId));
   const apiKey = useStore(state => state.apiKeys[state.provider]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isAutoScrollEnabledRef = useRef(true);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+
+  const fetchModels = async () => {
+    if (!apiKey || !session) return;
+    setIsFetchingModels(true);
+    
+    try {
+      let url = '';
+      let headers: any = { 'Authorization': `Bearer ${apiKey}` };
+
+      switch (provider) {
+        case 'moonshot': url = 'https://api.moonshot.cn/v1/models'; break;
+        case 'deepseek': url = 'https://api.deepseek.com/v1/models'; break;
+        case 'gemini': url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey; headers = {}; break;
+        case 'glm': url = 'https://open.bigmodel.cn/api/paas/v4/models'; break;
+      }
+
+      if (!url) return;
+
+      const response = await aiFetch({ url, method: 'GET', headers });
+      
+      let fetchedModels: string[] = [];
+      if (provider === 'gemini' && response.data.models) {
+        fetchedModels = response.data.models
+          .filter((m: any) => !m.name.includes('gemma'))
+          .map((m: any) => m.name.replace('models/', ''));
+      } else if (response.data && response.data.data) {
+        fetchedModels = response.data.data.map((m: any) => m.id);
+      }
+
+      fetchedModels.sort((a, b) => {
+        const keywords = ['gpt-4', 'sonnet', 'opus', 'v3', 'chat', 'latest', 'reasoner', 'pro', 'flash'];
+        const aScore = keywords.reduce((s, k) => s + (a.toLowerCase().includes(k) ? 1 : 0), 0);
+        const bScore = keywords.reduce((s, k) => s + (b.toLowerCase().includes(k) ? 1 : 0), 0);
+        return bScore - aScore;
+      });
+
+      updateSession(session.id, { models: fetchedModels });
+      if (fetchedModels.length > 0 && !fetchedModels.includes(session.model)) {
+        updateSession(session.id, { model: fetchedModels[0] });
+      }
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+    } finally {
+      setIsFetchingModels(false);
+    }
+  };
+
+  useEffect(() => {
+    if (apiKey && session && session.models.length === 0) {
+      fetchModels();
+    }
+  }, [apiKey, provider, session?.id]);
 
   const agent = useMemo(() => {
     if (!session || !apiKey) return null;
     return getOrCreateAgent(session.id);
-  }, [session?.id, apiKey, provider, model]);
+  }, [session?.id, apiKey, provider, session?.model]);
 
   const transport = useMemo(() => {
-    return agent ? new DirectChatTransport({ agent }) : undefined;
+    return agent ? new DirectChatTransport({ 
+      agent,
+      sendReasoning: true
+    }) : undefined;
   }, [agent]);
 
-  const { messages, sendMessage, stop, status } = useChat({
+  const { messages, sendMessage, stop, status, setMessages } = useChat({
     id: session?.id,
+    // @ts-ignore
     initialMessages: session?.messages || [],
     transport,
     onFinish: (event) => {
@@ -143,6 +250,31 @@ const ChatPanel: React.FC = () => {
       }
     }
   });
+
+  // Aggressive sync: Update store whenever useChat messages change
+  const previousMessagesLength = useRef(messages.length);
+  useEffect(() => {
+    if (session && messages.length !== previousMessagesLength.current) {
+        previousMessagesLength.current = messages.length;
+        updateSession(session.id, { messages: messages as any });
+    } else if (session && messages.length > 0 && isAiThinking) {
+        // Sync streaming content without triggering excessive re-renders
+        // Using JSON stringify to check for deep changes
+        const currentMessagesStr = JSON.stringify(messages);
+        const storeMessagesStr = JSON.stringify(session.messages);
+        if (currentMessagesStr !== storeMessagesStr) {
+           updateSession(session.id, { messages: messages as any });
+        }
+    }
+  }, [messages, session?.id, updateSession, status]);
+
+  // Hydrate messages when session changes to prevent losing history in the UI
+  // Note: less critical now that each session has its own panel, but good for initial load
+  useEffect(() => {
+    if (session?.id && messages.length === 0 && session.messages.length > 0) {
+      setMessages((session.messages as any) || []);
+    }
+  }, [session?.id, setMessages]);
 
   const [input, setInput] = useState('');
   const isAiThinking = status === 'submitted' || status === 'streaming';
@@ -198,13 +330,32 @@ const ChatPanel: React.FC = () => {
 
   return (
     <div className="panel-container" style={{ backgroundColor: 'var(--bg-app)' }}>
-      <div className="panel-header" style={{ height: '40px' }}>
+      <div className="panel-header" style={{ height: '48px', padding: '0 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Sparkles size={16} color="var(--accent)" />
           <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>AI ASSISTANT</span>
         </div>
-        <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-dim)', backgroundColor: 'var(--bg-input)', padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-main)' }}>
-          {provider.toUpperCase()} / {model}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-input)', borderRadius: '6px', border: '1px solid var(--border-main)', overflow: 'hidden' }}>
+            <div style={{ padding: '0 10px', fontSize: '0.75rem', fontWeight: 900, color: 'var(--accent)', borderRight: '1px solid var(--border-main)', height: '28px', display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.03)', whiteSpace: 'nowrap', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {(customProviders.find(p => p.id === provider)?.name || provider).toUpperCase()}
+            </div>
+            <select 
+              value={session.model} 
+              onChange={(e) => updateSession(session.id, { model: e.target.value })}
+              style={{ background: 'none', color: 'var(--text-main)', border: 'none', height: '28px', padding: '0 8px', fontSize: '0.8rem', outline: 'none', cursor: 'pointer', maxWidth: '160px' }}
+            >
+              {session.models.length > 0 ? session.models.map(m => <option key={m} value={m} style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>{m}</option>) : <option value={session.model} style={{ backgroundColor: 'var(--bg-panel)', color: 'var(--text-main)' }}>{session.model || 'No model'}</option>}
+            </select>
+            <button 
+              onClick={fetchModels} 
+              disabled={isFetchingModels || !apiKey}
+              style={{ background: 'none', border: 'none', borderLeft: '1px solid var(--border-main)', height: '28px', width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-dim)' }}
+              className="icon-hover"
+            >
+              <RefreshCw size={12} className={isFetchingModels ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
       </div>
       <div className="panel-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>

@@ -6,9 +6,13 @@ import ChatPanel from './components/Chat/ChatPanel';
 import EditorPanel from './components/Editor/EditorPanel';
 import FaustUIPanel from './components/FaustUI/FaustUIPanel';
 import SessionPanel from './components/SessionPanel';
+import { useStore } from './store';
 import './App.css';
 
 const App: React.FC = () => {
+  const sessions = useStore((state) => state.sessions);
+  const activeSessionId = useStore((state) => state.activeSessionId);
+
   return (
     <div className="app-container">
       <Header />
@@ -34,7 +38,20 @@ const App: React.FC = () => {
           
           {/* Right Sidebar: Chat */}
           <Allotment.Pane preferredSize={350} minSize={250}>
-            <ChatPanel />
+            <div style={{ height: '100%', width: '100%', position: 'relative' }}>
+              {sessions.map((session) => (
+                <div 
+                  key={session.id} 
+                  style={{ 
+                    display: session.id === activeSessionId ? 'block' : 'none',
+                    height: '100%',
+                    width: '100%'
+                  }}
+                >
+                  <ChatPanel sessionId={session.id} />
+                </div>
+              ))}
+            </div>
           </Allotment.Pane>
         </Allotment>
       </div>

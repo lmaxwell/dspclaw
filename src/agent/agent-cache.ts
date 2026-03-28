@@ -7,3 +7,8 @@ import { ToolLoopAgent } from 'ai';
  * component re-render or tab switch, making the UI much more efficient.
  */
 export const agentCache = new Map<string, ToolLoopAgent>();
+
+export function clearAgentCache() {
+  console.log('[DSPCLAW] Clearing agent cache due to settings change');
+  agentCache.clear();
+}

@@ -1,8 +1,62 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Component, type ReactNode } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { initializeApp } from './init'
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ 
+          height: '100vh', 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          backgroundColor: '#1a1a1a',
+          color: '#fb7185',
+          padding: '40px',
+          textAlign: 'center'
+        }}>
+          <h2 style={{ letterSpacing: '0.1em' }}>APPLICATION CRASHED</h2>
+          <p style={{ color: '#888', maxWidth: '600px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+            {this.state.error?.toString()}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '20px',
+              backgroundColor: '#333',
+              color: '#fff',
+              border: '1px solid #444',
+              padding: '8px 20px',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            RELOAD INTERFACE
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const Root = () => {
   const [ready, setReady] = useState(false);
@@ -13,7 +67,8 @@ const Root = () => {
       .then(() => setReady(true))
       .catch((e) => {
         console.error("Initialization Failed:", e);
-        setError(e.message);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setError(errorMessage || "An unknown initialization error occurred.");
       });
   }, []);
 
@@ -71,7 +126,11 @@ const Root = () => {
     );
   }
 
-  return <App />;
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<Root />);

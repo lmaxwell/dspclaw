@@ -1,6 +1,19 @@
 import '@testing-library/jest-dom';
 import { vi, beforeAll } from 'vitest';
 
+// Mock Web Worker (Needs to be available immediately during module evaluation)
+class WorkerMock {
+  url: string | URL;
+  onmessage: any;
+  onerror: any;
+  constructor(stringUrl: string | URL) {
+    this.url = stringUrl;
+  }
+  postMessage() {}
+  terminate() {}
+}
+(globalThis as any).Worker = WorkerMock;
+
 // Mock Web Audio API
 class AudioContextMock {
   createOscillator() { return {}; }
@@ -15,6 +28,7 @@ class AudioContextMock {
 beforeAll(() => {
   (globalThis as any).AudioContext = AudioContextMock;
   (globalThis as any).webkitAudioContext = AudioContextMock;
+  
   // Mock window properties
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
@@ -29,4 +43,7 @@ beforeAll(() => {
       dispatchEvent: vi.fn(),
     })),
   });
+
+  // Mock DOM methods not available in jsdom
+  HTMLElement.prototype.scrollIntoView = vi.fn();
 });
