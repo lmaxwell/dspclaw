@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { Play, Square, Activity, Settings, X, DownloadCloud, Github, Plus, Trash2, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Activity, Settings, X, DownloadCloud, Github, Plus, Trash2, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { aiFetch, IS_ELECTRON_APP } from '../utils/env';
 
 const SettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {

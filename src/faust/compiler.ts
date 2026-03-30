@@ -8,10 +8,14 @@ let libFaust: LibFaust | null = null;
 export const initFaust = async () => {
   if (compiler) return { compiler, libFaust };
 
-  const baseUrl = FAUST_CONFIG.wasmBaseUrl;
+  // Get absolute base URL for WASM assets
+  const baseUrl = new URL('./faustwasm/', location.href).href;
+
   const jsFile = `${baseUrl}libfaust-wasm.js`;
   const dataFile = `${baseUrl}libfaust-wasm.data`;
   const wasmFile = `${baseUrl}libfaust-wasm.wasm`;
+
+  console.log(`[DSPCLAW] Initializing Faust with baseUrl: ${baseUrl}`);
 
   const [jsCodeRaw, dataBinary, wasmBinary] = await Promise.all([
     fetch(jsFile).then(r => r.text()),
@@ -103,7 +107,8 @@ export const compileDSP = async (code: string, audioCtx: AudioContext, type: 'po
   // Offload heavy compilation to the Web Worker
   const workerPromise = new Promise<any>((resolve, reject) => {
     pendingCompilations.set(compileId, { resolve, reject });
-    worker.postMessage({ id: compileId, code, type });
+    const wasmBaseUrl = new URL('./faustwasm/', location.href).href;
+    worker.postMessage({ id: compileId, code, type, wasmBaseUrl });
   });
 
   const workerResult = await workerPromise;

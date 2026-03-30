@@ -68,6 +68,13 @@ export default defineConfig({
     commonjsOptions: {
       transformMixedEsModules: true,
     },
+    // Ensure assets are handled correctly in Electron
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
   define: {
     'process.env': {}

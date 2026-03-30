@@ -10,16 +10,18 @@ let compiler: FaustCompiler | null = null;
 let libFaust: LibFaust | null = null;
 let svgDiagrams: FaustSvgDiagrams | null = null;
 
-const initFaust = async () => {
+const initFaust = async (wasmBaseUrl?: string) => {
   if (compiler) return { compiler, libFaust, svgDiagrams };
 
-  // In Electron/file:// environments, location.origin might be "file://" 
-  // which causes issues when resolving paths like /faustwasm/.
-  // Using a relative path or a more robust resolution.
-  const baseUrl = location.protocol === 'file:' ? './faustwasm/' : `${location.origin}/faustwasm/`;
+  // Use passed wasmBaseUrl or try to derive it.
+  // In workers, location.href might be in /assets/, so we must be careful.
+  const baseUrl = wasmBaseUrl || ( (location.protocol === 'file:' || location.protocol === 'app:') ? '../faustwasm/' : `${location.origin}/faustwasm/` );
+  
   const jsFile = `${baseUrl}libfaust-wasm.js`;
   const dataFile = `${baseUrl}libfaust-wasm.data`;
   const wasmFile = `${baseUrl}libfaust-wasm.wasm`;
+
+  console.log(`[DSPCLAW-WORKER] Initializing Faust with baseUrl: ${baseUrl}`);
 
   // Fetch all assets
   const [jsCodeRaw, dataBinary, wasmBinary] = await Promise.all([
@@ -63,10 +65,10 @@ const initFaust = async () => {
 
 // Listen for messages from the main thread
 self.onmessage = async (e: MessageEvent) => {
-  const { id, code, type } = e.data;
+  const { id, code, type, wasmBaseUrl } = e.data;
 
   try {
-    const { compiler, svgDiagrams } = await initFaust();
+    const { compiler, svgDiagrams } = await initFaust(wasmBaseUrl);
     if (!compiler || !svgDiagrams) throw new Error("Faust compiler not initialized in worker");
 
     const name = "FaustDSP";
