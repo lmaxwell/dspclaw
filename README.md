@@ -24,7 +24,6 @@ DSPCLAW is a sandbox for exploring AI-assisted Faust code generation. It allows 
 - **Frontend**: React + Vite + TypeScript
 - **Desktop**: Electron
 - **DSP Engine**: [@grame/faustwasm](https://github.com/grame-cncm/faustwasm)
-- **AI/MCP**: @modelcontextprotocol/sdk
 - **Layout**: Allotment (resizable panes)
 - **Editor**: Monaco Editor
 
